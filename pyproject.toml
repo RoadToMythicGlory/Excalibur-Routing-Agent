@@ -1,0 +1,33 @@
+[project]
+name = "obs-auto-director"
+version = "0.1.0"
+description = "Autonomous OBS director for gaming streams."
+requires-python = ">=3.11"
+dependencies = [
+  "mss>=9.0.1",
+  "numpy>=1.26.0",
+  "opencv-python>=4.9.0.80",
+  "obsws-python>=1.7.0",
+  "pydantic>=2.7.0",
+  "PyYAML>=6.0.1",
+]
+
+[project.optional-dependencies]
+test = [
+  "pytest>=8.2.0",
+]
+
+[project.scripts]
+obs-auto-director = "obs_auto_director.main:main"
+obs-matrix = "obs_auto_director.matrix.run:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/obs_auto_director"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

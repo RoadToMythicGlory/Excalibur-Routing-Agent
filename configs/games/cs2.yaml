@@ -1,0 +1,226 @@
+game: "Counter-Strike 2"
+
+events:
+  - name: "player_1_critical_survival"
+    category: "survival"
+    scene: "CS2 - Player 1"
+    description: "Player 1 appears to be low health; hold the POV for the clutch moment."
+    priority: 90
+    hold_sec: 6.0
+    stable_frames: 2
+    interrupt: true
+    rules:
+      - type: "region_color"
+        source: "player_1"
+        region: [40, 930, 220, 95]
+        lower_bgr: [0, 0, 120]
+        upper_bgr: [90, 90, 255]
+        min_ratio: 0.18
+
+  - name: "player_2_critical_survival"
+    category: "survival"
+    scene: "CS2 - Player 2"
+    description: "Player 2 appears to be low health; hold the POV for the clutch moment."
+    priority: 90
+    hold_sec: 6.0
+    stable_frames: 2
+    interrupt: true
+    rules:
+      - type: "region_color"
+        source: "player_2"
+        region: [40, 930, 220, 95]
+        lower_bgr: [0, 0, 120]
+        upper_bgr: [90, 90, 255]
+        min_ratio: 0.18
+
+  - name: "player_1_sniper_scoped_action"
+    category: "sniper"
+    scene: "CS2 - Player 1"
+    description: "Player 1 is scoped with a sniper and has center-screen action."
+    priority: 80
+    hold_sec: 5.0
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_1"
+        region: [0, 0, 1920, 1080]
+        template_path: "../assets/templates/cs2/scope_overlay.png"
+        threshold: 0.80
+      - type: "motion"
+        source: "player_1"
+        region: [760, 360, 400, 260]
+        threshold: 22
+        min_ratio: 0.04
+
+  - name: "player_2_sniper_scoped_action"
+    category: "sniper"
+    scene: "CS2 - Player 2"
+    description: "Player 2 is scoped with a sniper and has center-screen action."
+    priority: 80
+    hold_sec: 5.0
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_2"
+        region: [0, 0, 1920, 1080]
+        template_path: "../assets/templates/cs2/scope_overlay.png"
+        threshold: 0.80
+      - type: "motion"
+        source: "player_2"
+        region: [760, 360, 400, 260]
+        threshold: 22
+        min_ratio: 0.04
+
+  - name: "player_1_molotov_throw"
+    category: "utility"
+    scene: "CS2 - Player 1"
+    description: "Player 1 selected or threw a molotov/incendiary with hand-region motion."
+    priority: 70
+    hold_sec: 4.0
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_1"
+        region: [1260, 760, 520, 260]
+        template_path: "../assets/templates/cs2/molotov_icon.png"
+        threshold: 0.78
+      - type: "motion"
+        source: "player_1"
+        region: [1120, 560, 620, 420]
+        threshold: 24
+        min_ratio: 0.05
+
+  - name: "player_2_molotov_throw"
+    category: "utility"
+    scene: "CS2 - Player 2"
+    description: "Player 2 selected or threw a molotov/incendiary with hand-region motion."
+    priority: 70
+    hold_sec: 4.0
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_2"
+        region: [1260, 760, 520, 260]
+        template_path: "../assets/templates/cs2/molotov_icon.png"
+        threshold: 0.78
+      - type: "motion"
+        source: "player_2"
+        region: [1120, 560, 620, 420]
+        threshold: 24
+        min_ratio: 0.05
+
+  - name: "player_1_grenade_throw"
+    category: "utility"
+    scene: "CS2 - Player 1"
+    description: "Player 1 selected or threw a grenade with hand-region motion."
+    priority: 68
+    hold_sec: 3.5
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_1"
+        region: [1260, 760, 520, 260]
+        template_path: "../assets/templates/cs2/grenade_icon.png"
+        threshold: 0.78
+      - type: "motion"
+        source: "player_1"
+        region: [1120, 560, 620, 420]
+        threshold: 24
+        min_ratio: 0.05
+
+  - name: "player_2_grenade_throw"
+    category: "utility"
+    scene: "CS2 - Player 2"
+    description: "Player 2 selected or threw a grenade with hand-region motion."
+    priority: 68
+    hold_sec: 3.5
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_2"
+        region: [1260, 760, 520, 260]
+        template_path: "../assets/templates/cs2/grenade_icon.png"
+        threshold: 0.78
+      - type: "motion"
+        source: "player_2"
+        region: [1120, 560, 620, 420]
+        threshold: 24
+        min_ratio: 0.05
+
+  - name: "player_1_molotov_fire_impact"
+    category: "utility"
+    scene: "CS2 - Player 1"
+    description: "Orange fire-like region appears on Player 1 POV after utility impact."
+    priority: 65
+    hold_sec: 3.5
+    stable_frames: 2
+    rules:
+      - type: "region_color"
+        source: "player_1"
+        region: [420, 220, 1080, 520]
+        lower_bgr: [0, 70, 150]
+        upper_bgr: [90, 210, 255]
+        min_ratio: 0.08
+
+  - name: "player_2_molotov_fire_impact"
+    category: "utility"
+    scene: "CS2 - Player 2"
+    description: "Orange fire-like region appears on Player 2 POV after utility impact."
+    priority: 65
+    hold_sec: 3.5
+    stable_frames: 2
+    rules:
+      - type: "region_color"
+        source: "player_2"
+        region: [420, 220, 1080, 520]
+        lower_bgr: [0, 70, 150]
+        upper_bgr: [90, 210, 255]
+        min_ratio: 0.08
+
+  - name: "player_1_active_combat"
+    category: "combat"
+    scene: "CS2 - Player 1"
+    description: "Generic motion-heavy action on Player 1 POV."
+    priority: 40
+    hold_sec: 3.0
+    stable_frames: 3
+    rules:
+      - type: "motion"
+        source: "player_1"
+        region: [420, 220, 1080, 520]
+        threshold: 26
+        min_ratio: 0.08
+
+  - name: "player_2_active_combat"
+    category: "combat"
+    scene: "CS2 - Player 2"
+    description: "Generic motion-heavy action on Player 2 POV."
+    priority: 40
+    hold_sec: 3.0
+    stable_frames: 3
+    rules:
+      - type: "motion"
+        source: "player_2"
+        region: [420, 220, 1080, 520]
+        threshold: 26
+        min_ratio: 0.08
+
+  - name: "observer_round_transition"
+    category: "round_state"
+    scene: "CS2 - Observer"
+    description: "Observer view during scoreboard, round transition, or broad round state."
+    priority: 10
+    hold_sec: 3.0
+    stable_frames: 2
+    rules:
+      - type: "region_brightness"
+        source: "observer"
+        region: [640, 90, 640, 110]
+        operator: "above"
+        threshold: 160

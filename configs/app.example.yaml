@@ -1,0 +1,27 @@
+obs:
+  host: "127.0.0.1"
+  port: 4455
+  password: null
+  dry_run: true
+
+director:
+  default_scene: "CS2 - Observer"
+  min_confidence: 0.75
+  switch_cooldown_sec: 2.0
+  fallback_after_sec: 6.0
+
+game_profile: "games/cs2.yaml"
+
+sources:
+  - name: "player_1"
+    monitor: 1
+    fps: 8
+    crop: null
+  - name: "player_2"
+    monitor: 2
+    fps: 8
+    crop: null
+  - name: "observer"
+    monitor: 1
+    fps: 4
+    crop: null

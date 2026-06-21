@@ -1,0 +1,116 @@
+# Production Video Matrix - persistent configuration (always 11x11).
+# Only a subset of slots is active in the first slice; every slot still exists.
+
+program_output: output_01
+
+latency_budget_ms:
+  ingest_to_frame_tap: 80
+  gsi_to_game_state: 25
+  game_state_to_intelligence: 40
+  frame_tap_to_agent: 40
+  agent_decision: 80
+  intent_to_engine: 20
+  engine_arbitration: 30
+  matrix_apply: 80
+  obs_command: 50
+  ui_update: 150
+  max_state_age: 500
+
+ttl_defaults_ms:
+  emergency: 10000
+  gameplay: 3000
+  replay: 8000
+  stats: 5000
+  automation: 15000
+
+# CS2 GSI steamid -> matrix input slot.
+steam_to_input:
+  "76561190000000001": input_01
+  "76561190000000002": input_02
+  "76561190000000003": input_03
+  "76561190000000004": input_04
+  "76561190000000005": input_05
+  "76561190000000006": input_06
+  "76561190000000007": input_07
+  "76561190000000008": input_08
+  "76561190000000009": input_09
+  "76561190000000010": input_10
+
+inputs:
+  - id: input_01
+    state: active
+    protocol: srt
+    uri: "srt://0.0.0.0:10001"
+    player_name: ZywOo
+    team: CT
+    role: player
+    obs_scene: "PGM - Player 01"
+  - id: input_02
+    state: active
+    protocol: srt
+    uri: "srt://0.0.0.0:10002"
+    player_name: apEX
+    team: CT
+    obs_scene: "PGM - Player 02"
+  - id: input_03
+    state: active
+    protocol: srt
+    uri: "srt://0.0.0.0:10003"
+    player_name: Spinx
+    team: CT
+    obs_scene: "PGM - Player 03"
+  # input_04 .. input_10 are reserved for the rest of the roster.
+  - id: input_04
+    state: reserved
+  - id: input_05
+    state: reserved
+  - id: input_06
+    state: reserved
+  - id: input_07
+    state: reserved
+  - id: input_08
+    state: reserved
+  - id: input_09
+    state: reserved
+  - id: input_10
+    state: reserved
+  # input_11 reserved for an observer / GOTV / replay feed.
+  - id: input_11
+    state: reserved
+    role: observer
+
+outputs:
+  - id: output_01
+    kind: program
+    state: active
+    obs_scene: "PGM - Program"
+  - id: output_02
+    kind: preview
+    state: active
+  - id: output_03
+    kind: multiview
+    state: active
+  - id: output_04
+    kind: reserved
+    state: reserved
+  - id: output_05
+    kind: reserved
+    state: reserved
+  - id: output_06
+    kind: reserved
+    state: reserved
+  - id: output_07
+    kind: reserved
+    state: reserved
+  - id: output_08
+    kind: reserved
+    state: reserved
+  - id: output_09
+    kind: reserved
+    state: reserved
+  - id: output_10
+    kind: reserved
+    state: reserved
+  - id: output_11
+    kind: clean
+    state: reserved
