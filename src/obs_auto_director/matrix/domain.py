@@ -8,7 +8,12 @@ from obs_auto_director.matrix.clock import now_ms
 
 INPUT_PREFIX = "input_"
 OUTPUT_PREFIX = "output_"
-MIN_SLOTS = 11
+# Default surface size. Existing CS2 setups expect 11 inputs / 11 outputs, but
+# the count is runtime-configurable; this is only the fallback when no explicit
+# sizing is persisted.
+DEFAULT_SLOTS = 11
+# Backwards-compatible alias kept for older references.
+MIN_SLOTS = DEFAULT_SLOTS
 
 
 def new_id() -> str:

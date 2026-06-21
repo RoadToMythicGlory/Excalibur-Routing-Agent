@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import parse_qs, unquote, urlparse
 
 from obs_auto_director.matrix.clock import now_ms
 from obs_auto_director.matrix.domain import ControlAction, ControlCommand
@@ -21,11 +22,15 @@ class MatrixRequestHandler(BaseHTTPRequestHandler):
     """Dependency-free HTTP surface for the control plane and CS2 GSI.
 
     Routes:
-      GET  /api/state        -> full matrix/bus/latency/story snapshot
-      GET  /api/config       -> editable input/output configuration
-      POST /gsi              -> CS2 Game State Integration payload sink
-      POST /api/control      -> operator command (manual cut, lock, hold, emergency)
-      POST /api/config/input -> set input metadata (name, team, role, scene)
+      GET  /api/state         -> full matrix/bus/latency/story snapshot
+      GET  /api/config        -> editable input/output configuration
+      GET  /api/files         -> browse backend directories/media files (picker)
+      POST /gsi               -> CS2 Game State Integration payload sink
+      POST /api/control       -> operator command (manual cut, lock, hold, emergency)
+      POST /api/config/input  -> set input metadata (identity, scene, source)
+      POST /api/config/matrix -> set input/output slot counts
+      POST /api/config/program-> toggle/configure the virtual-camera device
+      POST /api/agent         -> activate/deactivate the AI director
     """
 
     server: MatrixHTTPServer
@@ -67,10 +72,25 @@ class MatrixRequestHandler(BaseHTTPRequestHandler):
         if self.path.startswith("/api/preview/"):
             self._send_preview()
             return
+        if self.path.startswith("/api/files"):
+            self._send_files()
+            return
         if self.path == "/" or self.path.startswith("/health"):
             self._send(200, {"status": "ok", "now_ms": now_ms()})
             return
         self._send(404, {"error": "not_found"})
+
+    def _send_files(self) -> None:
+        # /api/files?path=<dir or file on the backend machine>
+        query = parse_qs(urlparse(self.path).query)
+        raw = query.get("path", [""])[0]
+        path = unquote(raw)
+        try:
+            listing = self.server.service.browse_media(path)
+        except FileNotFoundError as error:
+            self._send(404, {"error": str(error)})
+            return
+        self._send(200, listing)
 
     def _send_preview(self) -> None:
         # /api/preview/<input_id>.jpg (ignore any cache-busting query string)
@@ -98,10 +118,57 @@ class MatrixRequestHandler(BaseHTTPRequestHandler):
             decision = self._handle_control(payload)
             self._send(200, decision)
             return
+        if self.path.startswith("/api/config/matrix"):
+            self._handle_matrix_config(payload)
+            return
         if self.path.startswith("/api/config/input"):
             self._handle_input_config(payload)
             return
+        if self.path.startswith("/api/config/program"):
+            self._handle_program_config(payload)
+            return
+        if self.path.startswith("/api/agent"):
+            self._handle_agent_toggle(payload)
+            return
         self._send(404, {"error": "not_found"})
+
+    def _handle_agent_toggle(self, payload: dict) -> None:
+        if "enabled" not in payload:
+            self._send(400, {"error": "missing_enabled"})
+            return
+        enabled = self.server.service.set_agent_enabled(payload.get("enabled"))
+        self._send(200, {"status": "ok", "agent_enabled": enabled})
+
+    def _handle_matrix_config(self, payload: dict) -> None:
+        try:
+            result = self.server.service.set_matrix_size(
+                input_count=payload.get("input_count"),
+                output_count=payload.get("output_count"),
+            )
+        except (ValueError, TypeError) as error:
+            self._send(400, {"error": str(error)})
+            return
+        self._send(200, {"status": "ok", **result})
+
+    def _handle_program_config(self, payload: dict) -> None:
+        # Configure the Excalibur virtual-camera device output. Accepts
+        # virtualcam_* fields (or a nested "virtualcam" object).
+        vcam = payload.get("virtualcam")
+        if not isinstance(vcam, dict):
+            vcam = {
+                "enabled": payload.get("virtualcam_enabled"),
+                "device": payload.get("virtualcam_device"),
+                "width": payload.get("virtualcam_width"),
+                "height": payload.get("virtualcam_height"),
+                "fps": payload.get("virtualcam_fps"),
+                "manager_bin": payload.get("virtualcam_manager_bin"),
+            }
+        try:
+            status = self.server.service.set_virtualcam_config(vcam)
+        except (ValueError, TypeError) as error:
+            self._send(400, {"error": str(error)})
+            return
+        self._send(200, {"status": "ok", "virtualcam": status})
 
     def _handle_input_config(self, payload: dict) -> None:
         input_id = payload.get("input_id")

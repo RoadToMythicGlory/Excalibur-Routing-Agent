@@ -36,6 +36,25 @@ def test_build_program_command_can_transcode():
     assert "copy" not in cmd
 
 
+def test_build_program_command_forces_transcode_for_files():
+    # Files default to copy at the call site, but stream-copying arbitrary file
+    # codecs into the live program feed is unreliable, so it must transcode.
+    cmd = build_program_command(
+        "C:/streams/demo.mp4", "srt://x:1", "copy", source_type="file"
+    )
+    assert "libx264" in cmd
+    assert "copy" not in cmd
+    assert "-re" in cmd
+
+
+def test_build_program_command_loops_files_when_requested():
+    cmd = build_program_command(
+        "C:/streams/demo.mp4", "srt://x:1", "copy", source_type="file", loop=True
+    )
+    assert cmd.index("-stream_loop") < cmd.index("-i")
+    assert "-re" in cmd
+
+
 def test_program_obs_url_converts_listener_to_caller():
     obs_url = program_obs_url(DEFAULT_PROGRAM_PUBLISH_URL, "10.0.0.5")
     assert obs_url == "srt://10.0.0.5:9999?mode=caller&latency=200"
@@ -57,8 +76,12 @@ def test_inactive_manager_tracks_source_without_spawning_ffmpeg():
     assert manager.active is False
 
 
-def test_program_route_updates_program_output_source():
-    service = MatrixService(obs_dry_run=True)
+def test_program_route_updates_program_output_source(tmp_path):
+    # The service program path is now the seamless compositor; a route applies as
+    # a streamselect switch (set_active) rather than an FFmpeg respawn.
+    service = MatrixService(
+        obs_dry_run=True, config_path=str(tmp_path / "runtime.json")
+    )
     command = ControlCommand(
         action=ControlAction.MANUAL_CUT,
         operator="test",
@@ -76,8 +99,10 @@ def test_program_route_updates_program_output_source():
     assert service.program.is_running() is False
 
 
-def test_program_output_url_is_exposed_and_separate_from_preview():
-    service = MatrixService(obs_dry_run=True)
+def test_program_output_url_is_exposed_and_separate_from_preview(tmp_path):
+    service = MatrixService(
+        obs_dry_run=True, config_path=str(tmp_path / "runtime.json")
+    )
     config = service.config_snapshot()
 
     assert config["program"]["publish_url"] == service.program.publish_url

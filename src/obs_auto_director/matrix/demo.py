@@ -12,15 +12,24 @@ from obs_auto_director.matrix.service import MatrixService
 logger = logging.getLogger(__name__)
 
 
-def run_clutch_demo(obs_dry_run: bool = True, step_ms: float = 250.0) -> MatrixService:
+def run_clutch_demo(
+    obs_dry_run: bool = True,
+    step_ms: float = 250.0,
+    config_path: str | None = None,
+) -> MatrixService:
     """Feed the simulated clutch round through the full pipeline.
 
     Uses the deterministic clock override so latency and TTL math are stable.
     Returns the service so callers (CLI, tests) can inspect routes and audit.
+    ``config_path`` lets tests point at an isolated runtime config instead of
+    the operator's live one.
     """
 
     set_now_override(1_700_000_000_000.0)
-    service = MatrixService(obs_dry_run=obs_dry_run)
+    if config_path is not None:
+        service = MatrixService(obs_dry_run=obs_dry_run, config_path=config_path)
+    else:
+        service = MatrixService(obs_dry_run=obs_dry_run)
     service.connect_obs()
 
     for payload in clutch_round_sequence():

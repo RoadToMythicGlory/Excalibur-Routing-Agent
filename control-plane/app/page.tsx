@@ -107,6 +107,12 @@ export default function Page() {
             <OperatorControls
               inputs={state.matrix.inputs}
               outputs={state.matrix.outputs}
+              agentEnabled={state.agent_enabled}
+              onAgentToggled={(enabled) =>
+                setState((prev) =>
+                  prev ? { ...prev, agent_enabled: enabled } : prev
+                )
+              }
             />
             <AuditPanel audit={state.audit} />
           </div>

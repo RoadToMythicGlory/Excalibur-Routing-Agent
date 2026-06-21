@@ -17,24 +17,45 @@ DEFAULT_PROGRAM_PUBLISH_URL = "srt://0.0.0.0:9999?mode=listener&latency=200"
 
 
 def build_program_command(
-    read_url: str, publish_url: str, codec: str = "copy"
+    read_url: str,
+    publish_url: str,
+    codec: str = "copy",
+    source_type: str = "srt",
+    loop: bool = False,
 ) -> list[str]:
     """FFmpeg command to republish one input feed as the stable program output.
 
     ``codec="copy"`` keeps the source bitstream (lowest latency/CPU, full
     program quality). Pass a real encoder (e.g. ``"libx264"``) only when the
     source must be transcoded for OBS compatibility.
+
+    File sources (``source_type="file"``) are played back in real time (``-re``),
+    may be looped, and are transcoded by default: stream-copying an arbitrary
+    file's codecs into the live mpegts program feed is unreliable, so file inputs
+    fall back to ``libx264``/``aac`` unless an explicit codec is given.
     """
     args = ["ffmpeg", "-nostdin", "-loglevel", "warning"]
-    if read_url.startswith("rtsp://"):
-        args += ["-rtsp_transport", "tcp"]
-    args += ["-fflags", "nobuffer", "-i", read_url]
-    if codec == "copy":
+    if source_type == "file":
+        if loop:
+            args += ["-stream_loop", "-1"]
+        args += ["-re"]
+    else:
+        if read_url.startswith("rtsp://") or source_type == "rtsp":
+            args += ["-rtsp_transport", "tcp"]
+        args += ["-fflags", "nobuffer"]
+    args += ["-i", read_url]
+
+    effective_codec = codec
+    if source_type == "file" and codec == "copy":
+        # Force a real encoder so files with arbitrary codecs publish reliably.
+        effective_codec = "libx264"
+
+    if effective_codec == "copy":
         args += ["-c", "copy"]
     else:
         args += [
             "-c:v",
-            codec,
+            effective_codec,
             "-preset",
             "veryfast",
             "-tune",
@@ -96,6 +117,8 @@ class ProgramOutputManager:
         self.active = False
         self.current_input: str | None = None
         self.current_read_url: str | None = None
+        self.current_source_type: str = "srt"
+        self.current_loop: bool = False
         self._process: subprocess.Popen | None = None
         self._last_started_at = 0.0
         self._lock = threading.RLock()
@@ -122,12 +145,24 @@ class ProgramOutputManager:
             self._thread.start()
         logger.info("Program output publisher enabled -> %s", self.publish_url)
 
-    def set_source(self, input_id: str | None, read_url: str | None) -> None:
+    def set_source(
+        self,
+        input_id: str | None,
+        read_url: str | None,
+        source_type: str = "srt",
+        loop: bool = False,
+    ) -> None:
         """Point the program output at a new input feed (route change)."""
         with self._lock:
-            changed = read_url != self.current_read_url
+            changed = (
+                read_url != self.current_read_url
+                or source_type != self.current_source_type
+                or loop != self.current_loop
+            )
             self.current_input = input_id
             self.current_read_url = read_url
+            self.current_source_type = source_type
+            self.current_loop = loop
             if not self.active or not changed:
                 return
             if read_url:
@@ -180,7 +215,13 @@ class ProgramOutputManager:
         self._kill()
         self._last_started_at = now_ms()
         self._process = subprocess.Popen(
-            build_program_command(self.current_read_url, self.publish_url, self.codec),
+            build_program_command(
+                self.current_read_url,
+                self.publish_url,
+                self.codec,
+                source_type=self.current_source_type,
+                loop=self.current_loop,
+            ),
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             stdin=subprocess.DEVNULL,

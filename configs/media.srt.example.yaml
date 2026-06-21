@@ -18,3 +18,12 @@ inputs:
     read_url: "srt://0.0.0.0:9003?mode=listener&latency=200"
     width: 480
     fps: 5
+  # Local file / VOD input - play a downloaded CS2 stream for offline testing or
+  # a director video bit. source_type: file plays in real time (-re); loop: true
+  # repeats it forever. read_url is a path on the machine running the backend.
+  - id: input_04
+    source_type: file
+    read_url: "C:/streams/cs2_demo.mp4"
+    loop: true
+    width: 480
+    fps: 5

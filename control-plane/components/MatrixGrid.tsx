@@ -32,7 +32,7 @@ export function MatrixGrid({
 }) {
   return (
     <div className="panel">
-      <h2>Inputs (11x11 surface)</h2>
+      <h2>Inputs ({inputs.length})</h2>
       <div className="matrix">
         {inputs.map((slot) => {
           const isProgram = slot.id === programInput;
@@ -106,7 +106,7 @@ export function MatrixGrid({
 export function OutputsGrid({ outputs }: { outputs: OutputSlot[] }) {
   return (
     <div className="panel">
-      <h2>Outputs</h2>
+      <h2>Outputs ({outputs.length})</h2>
       <div className="matrix">
         {outputs.map((slot) => (
           <div key={slot.id} className={`slot ${slot.state}`}>

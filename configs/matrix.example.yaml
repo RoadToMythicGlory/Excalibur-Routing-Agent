@@ -1,7 +1,14 @@
-# Production Video Matrix - persistent configuration (always 11x11).
-# Only a subset of slots is active in the first slice; every slot still exists.
+# Production Video Matrix - persistent configuration.
+# Slot counts are configurable; they default to 11 inputs / 11 outputs when
+# omitted. Operators can also add/remove trailing slots from the control plane
+# (POST /api/config/matrix), which persists input_count/output_count to
+# configs/matrix.runtime.json.
 
 program_output: output_01
+
+# Number of input/output slots. Omit for the default 11x11 surface.
+input_count: 11
+output_count: 11
 
 latency_budget_ms:
   ingest_to_frame_tap: 80
@@ -74,7 +81,13 @@ inputs:
     state: reserved
   - id: input_10
     state: reserved
-  # input_11 reserved for an observer / GOTV / replay feed.
+  # input_11 reserved for an observer / GOTV / replay feed. A file/VOD source can
+  # also live here for local testing or director-provided video bits: set
+  # source_mode: file, file_path, and loop from the control plane Configuration
+  # panel (persisted to configs/matrix.runtime.json), e.g.
+  #   source_mode: file
+  #   file_path: "C:/streams/cs2_demo.mp4"
+  #   loop: true
   - id: input_11
     state: reserved
     role: observer

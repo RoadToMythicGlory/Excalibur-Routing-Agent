@@ -25,6 +25,8 @@ def load_media_inputs(path: str) -> tuple[list[MediaInput], str, float]:
             width=int(item.get("width", 480)),
             fps=float(item.get("fps", 5.0)),
             quality=int(item.get("quality", 7)),
+            source_type=str(item.get("source_type", "srt")),
+            loop=bool(item.get("loop", False)),
         )
         for item in data.get("inputs", [])
     ]
@@ -79,6 +81,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.media:
             inputs, preview_dir, freshness_ms = load_media_inputs(args.media)
             service.enable_media(inputs, preview_dir=preview_dir, freshness_ms=freshness_ms)
+        service.start_director()
         if args.simulate:
             start_live_simulation(service)
         serve(service, host=args.host, port=args.port)

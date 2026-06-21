@@ -16,15 +16,28 @@ from obs_auto_director.matrix.matrix_core import MatrixCore
 logger = logging.getLogger(__name__)
 
 
+SOURCE_TYPES = ("srt", "rtsp", "url", "file")
+
+
 @dataclass
 class MediaInput:
-    """One real feed: how to read it and where to write its preview frame."""
+    """One real feed: how to read it and where to write its preview frame.
+
+    ``source_type`` selects how FFmpeg should open ``read_url``:
+      - ``srt`` / ``url``: live stream, read with low buffering.
+      - ``rtsp``: live stream over RTSP (TCP transport).
+      - ``file``: a local video file / VOD, played back in real time (``-re``)
+        and optionally looped (``loop``) for repeatable local testing or
+        director-provided video bits.
+    """
 
     input_id: str
     read_url: str
     width: int = 480
     fps: float = 5.0
     quality: int = 7  # ffmpeg -q:v, lower is better
+    source_type: str = "srt"
+    loop: bool = False
 
 
 @dataclass
@@ -47,6 +60,45 @@ def build_srt_url(
         target = host or "127.0.0.1"
         return f"srt://{target}:{port}?mode=caller&latency={latency_ms}"
     return f"srt://0.0.0.0:{port}?mode=listener&latency={latency_ms}"
+
+
+def build_input_args(spec: "MediaInput") -> list[str]:
+    """FFmpeg input-side args for one feed, based on its source type.
+
+    File sources are played in real time (``-re``) so a long VOD does not flush
+    through instantly, and may be looped. Live sources (srt/rtsp/url) read with
+    low buffering; RTSP additionally forces TCP transport.
+    """
+    args: list[str] = []
+    if spec.source_type == "file":
+        if spec.loop:
+            # Input-side loop: must precede -i. -1 loops forever.
+            args += ["-stream_loop", "-1"]
+        args += ["-re"]
+    else:
+        if spec.source_type == "rtsp" or spec.read_url.startswith("rtsp://"):
+            args += ["-rtsp_transport", "tcp"]
+        args += ["-fflags", "nobuffer"]
+    args += ["-i", spec.read_url]
+    return args
+
+
+def build_ingest_command(spec: "MediaInput", preview_path: Path) -> list[str]:
+    """Full FFmpeg command that turns one feed into a refreshed JPEG frame tap."""
+    args = ["ffmpeg", "-nostdin", "-loglevel", "warning"]
+    args += build_input_args(spec)
+    args += [
+        "-an",
+        "-vf",
+        f"fps={spec.fps},scale={spec.width}:-2",
+        "-q:v",
+        str(spec.quality),
+        "-update",
+        "1",
+        "-y",
+        str(preview_path),
+    ]
+    return args
 
 
 class FfmpegFrameTapSource:
@@ -209,26 +261,7 @@ class MediaIngestManager:
         worker.process = None
 
     def _command(self, spec: MediaInput) -> list[str]:
-        url = spec.read_url
-        args = ["ffmpeg", "-nostdin", "-loglevel", "warning"]
-        if url.startswith("rtsp://"):
-            args += ["-rtsp_transport", "tcp"]
-        args += [
-            "-fflags",
-            "nobuffer",
-            "-i",
-            url,
-            "-an",
-            "-vf",
-            f"fps={spec.fps},scale={spec.width}:-2",
-            "-q:v",
-            str(spec.quality),
-            "-update",
-            "1",
-            "-y",
-            str(self.preview_dir / f"{spec.input_id}.jpg"),
-        ]
-        return args
+        return build_ingest_command(spec, self.preview_dir / f"{spec.input_id}.jpg")
 
     # -- read side -----------------------------------------------------------
     def latest_jpeg(self, input_id: str) -> bytes | None:

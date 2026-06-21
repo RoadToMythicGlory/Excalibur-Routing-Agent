@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from obs_auto_director.matrix.clock import now_ms
 from obs_auto_director.matrix.domain import (
-    MIN_SLOTS,
+    DEFAULT_SLOTS,
     InputSlot,
     OutputKind,
     OutputSlot,
@@ -16,13 +16,15 @@ from obs_auto_director.matrix.domain import (
 class MatrixCore:
     """The truth layer for what exists and what can be routed.
 
-    Always exposes at least 11 input slots and 11 output slots. Only the routing
-    engine should call `apply_route`; everything else reads state.
+    Exposes a runtime-configurable number of input and output slots (default 11
+    each). Slot counts can grow or shrink at runtime via the resize helpers; only
+    trailing, unused slots may be removed. Only the routing engine should call
+    `apply_route`; everything else reads state.
     """
 
-    def __init__(self, inputs: int = MIN_SLOTS, outputs: int = MIN_SLOTS) -> None:
-        slot_count = max(MIN_SLOTS, inputs)
-        output_count = max(MIN_SLOTS, outputs)
+    def __init__(self, inputs: int = DEFAULT_SLOTS, outputs: int = DEFAULT_SLOTS) -> None:
+        slot_count = max(1, int(inputs))
+        output_count = max(1, int(outputs))
         self.inputs: dict[str, InputSlot] = {}
         self.outputs: dict[str, OutputSlot] = {}
         self.routes: dict[str, Route] = {}
@@ -34,6 +36,52 @@ class MatrixCore:
         for index in range(1, output_count + 1):
             slot_id = output_slot_id(index)
             self.outputs[slot_id] = OutputSlot(id=slot_id, label=f"Output {index:02d}")
+
+    # -- dynamic sizing ------------------------------------------------------
+    def add_input(self) -> InputSlot:
+        """Append the next sequential input slot and return it."""
+        index = len(self.inputs) + 1
+        slot_id = input_slot_id(index)
+        slot = InputSlot(id=slot_id, label=f"Input {index:02d}")
+        self.inputs[slot_id] = slot
+        return slot
+
+    def add_output(self) -> OutputSlot:
+        """Append the next sequential output slot and return it."""
+        index = len(self.outputs) + 1
+        slot_id = output_slot_id(index)
+        slot = OutputSlot(id=slot_id, label=f"Output {index:02d}")
+        self.outputs[slot_id] = slot
+        return slot
+
+    def last_input_id(self) -> str | None:
+        return input_slot_id(len(self.inputs)) if self.inputs else None
+
+    def last_output_id(self) -> str | None:
+        return output_slot_id(len(self.outputs)) if self.outputs else None
+
+    def input_is_routed(self, slot_id: str) -> bool:
+        return any(route.input_id == slot_id for route in self.routes.values())
+
+    def remove_last_input(self) -> str:
+        """Remove the highest-indexed input slot. Caller must ensure it is unused."""
+        if len(self.inputs) <= 1:
+            raise ValueError("cannot remove the last remaining input slot")
+        slot_id = input_slot_id(len(self.inputs))
+        if self.input_is_routed(slot_id):
+            raise ValueError(f"input {slot_id} is currently routed; cannot remove")
+        self.inputs.pop(slot_id, None)
+        return slot_id
+
+    def remove_last_output(self) -> str:
+        """Remove the highest-indexed output slot. Caller must ensure it is unused."""
+        if len(self.outputs) <= 1:
+            raise ValueError("cannot remove the last remaining output slot")
+        slot_id = output_slot_id(len(self.outputs))
+        if slot_id in self.routes:
+            raise ValueError(f"output {slot_id} is currently routed; cannot remove")
+        self.outputs.pop(slot_id, None)
+        return slot_id
 
     def configure_input(self, slot_id: str, **fields) -> InputSlot:
         slot = self.inputs[slot_id]

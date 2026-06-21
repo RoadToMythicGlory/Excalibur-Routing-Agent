@@ -1,15 +1,23 @@
 {
   "program_output": "output_01",
+  "program_publish_url": null,
+  "input_count": 11,
+  "output_count": 11,
+  "agent_enabled": false,
   "inputs": {
     "input_01": {
-      "srt_mode": "listener",
+      "srt_mode": "off",
       "srt_port": 20001,
       "srt_latency": 200,
       "player_name": null,
       "team": null,
       "role": null,
       "obs_scene": "PGM - Player 01",
-      "srt_host": null
+      "srt_host": null,
+      "source_mode": "file",
+      "file_path": "C:\\Users\\idanm\\Downloads\\videoplayback.mp4",
+      "source_url": null,
+      "loop": true
     },
     "input_02": {
       "player_name": null,
@@ -19,7 +27,11 @@
       "srt_mode": "off",
       "srt_host": null,
       "srt_port": 20002,
-      "srt_latency": 200
+      "srt_latency": 200,
+      "source_mode": "file",
+      "file_path": "C:\\Users\\idanm\\Downloads\\counter-strike-2-ranked-gameplay-4k-no-commentary-ytmp4.savetube.vip.mp4",
+      "source_url": null,
+      "loop": true
     },
     "input_03": {
       "player_name": null,
@@ -29,7 +41,19 @@
       "srt_mode": "off",
       "srt_host": null,
       "srt_port": null,
-      "srt_latency": 200
+      "srt_latency": 200,
+      "source_mode": "file",
+      "file_path": "C:\\Users\\idanm\\Downloads\\counter-strike-2-best-gameplay-4k-no-commentary-ytmp4.savetube.vip (1).mp4",
+      "source_url": null,
+      "loop": true
     }
+  },
+  "virtualcam": {
+    "enabled": false,
+    "device": "Excalibur",
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "manager_bin": "AkVCamManager"
   }
 }

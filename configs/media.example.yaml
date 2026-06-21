@@ -22,3 +22,13 @@ inputs:
     fps: 5
   # Alternative: read SRT directly from MediaMTX instead of RTSP, e.g.
   #   read_url: "srt://127.0.0.1:8890?streamid=read:input_01"
+
+  # Local file / VOD input - a downloaded CS2 stream for local testing or a
+  # director video bit. Played in real time (-re); loop repeats it forever.
+  # read_url is a path on the machine running the backend.
+  - id: input_04
+    source_type: file
+    read_url: "C:/streams/cs2_demo.mp4"
+    loop: true
+    width: 480
+    fps: 5

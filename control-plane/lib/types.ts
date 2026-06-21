@@ -96,6 +96,7 @@ export interface MatchSnapshot {
 
 export interface MatrixSnapshot {
   media_enabled: boolean;
+  agent_enabled: boolean;
   program: ProgramStatus;
   matrix: {
     inputs: InputSlot[];
