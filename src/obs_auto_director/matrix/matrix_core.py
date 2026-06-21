@@ -91,6 +91,7 @@ class MatrixCore:
                     "kind": slot.kind.value,
                     "state": slot.state.value,
                     "obs_scene": slot.obs_scene,
+                    "uri": slot.uri,
                     "input_id": self.current_input_for(slot.id),
                 }
                 for slot in self.outputs.values()

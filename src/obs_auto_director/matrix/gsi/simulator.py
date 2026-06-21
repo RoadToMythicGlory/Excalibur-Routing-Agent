@@ -9,17 +9,19 @@ Produces payloads in the same shape CS2 posts for an observer/GOTV client
 intelligence engine can be exercised without a live game.
 """
 
+# Neutral placeholder roster for the simulator only. Real names come from
+# operator configuration or live GSI; nothing here ships a real identity.
 ROSTER = [
-    ("76561190000000001", "ZywOo", "CT"),
-    ("76561190000000002", "apEX", "CT"),
-    ("76561190000000003", "Spinx", "CT"),
-    ("76561190000000004", "flameZ", "CT"),
-    ("76561190000000005", "mezii", "CT"),
-    ("76561190000000006", "donk", "T"),
-    ("76561190000000007", "sh1ro", "T"),
-    ("76561190000000008", "magixx", "T"),
-    ("76561190000000009", "zont1x", "T"),
-    ("76561190000000010", "chopper", "T"),
+    ("76561190000000001", "CT 1", "CT"),
+    ("76561190000000002", "CT 2", "CT"),
+    ("76561190000000003", "CT 3", "CT"),
+    ("76561190000000004", "CT 4", "CT"),
+    ("76561190000000005", "CT 5", "CT"),
+    ("76561190000000006", "T 1", "T"),
+    ("76561190000000007", "T 2", "T"),
+    ("76561190000000008", "T 3", "T"),
+    ("76561190000000009", "T 4", "T"),
+    ("76561190000000010", "T 5", "T"),
 ]
 
 
@@ -76,8 +78,8 @@ def clutch_round_sequence(start_ts: float = 1_700_000_000.0) -> Iterator[dict]:
         "live",
         ts,
         {
-            ROSTER[0][0]: _player("ZywOo", "CT", 100, "weapon_awp"),
-            ROSTER[5][0]: _player("donk", "T", 100, "weapon_awp"),
+            ROSTER[0][0]: _player(ROSTER[0][1], "CT", 100, "weapon_awp"),
+            ROSTER[5][0]: _player(ROSTER[5][1], "T", 100, "weapon_awp"),
         },
     )
     ts += 1
@@ -88,9 +90,9 @@ def clutch_round_sequence(start_ts: float = 1_700_000_000.0) -> Iterator[dict]:
         "live",
         ts,
         {
-            ROSTER[5][0]: _player("donk", "T", 100, "weapon_molotov"),
-            ROSTER[6][0]: _player("sh1ro", "T", 100, "weapon_smokegrenade"),
-            ROSTER[7][0]: _player("magixx", "T", 100, "weapon_flashbang"),
+            ROSTER[5][0]: _player(ROSTER[5][1], "T", 100, "weapon_molotov"),
+            ROSTER[6][0]: _player(ROSTER[6][1], "T", 100, "weapon_smokegrenade"),
+            ROSTER[7][0]: _player(ROSTER[7][1], "T", 100, "weapon_flashbang"),
         },
     )
     ts += 1
@@ -103,7 +105,7 @@ def clutch_round_sequence(start_ts: float = 1_700_000_000.0) -> Iterator[dict]:
         "live",
         ts,
         {
-            ROSTER[0][0]: _player("ZywOo", "CT", 42, "weapon_awp"),
+            ROSTER[0][0]: _player(ROSTER[0][1], "CT", 42, "weapon_awp"),
             **dead,
         },
         bomb={"state": "planted", "site": "A", "countdown": 28.0},
@@ -116,7 +118,7 @@ def clutch_round_sequence(start_ts: float = 1_700_000_000.0) -> Iterator[dict]:
         "live",
         ts,
         {
-            ROSTER[0][0]: _player("ZywOo", "CT", 18, "weapon_awp"),
+            ROSTER[0][0]: _player(ROSTER[0][1], "CT", 18, "weapon_awp"),
             **dead,
         },
         bomb={"state": "planted", "site": "A", "countdown": 14.0},

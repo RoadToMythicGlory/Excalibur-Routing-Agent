@@ -1,0 +1,35 @@
+{
+  "program_output": "output_01",
+  "inputs": {
+    "input_01": {
+      "srt_mode": "listener",
+      "srt_port": 20001,
+      "srt_latency": 200,
+      "player_name": null,
+      "team": null,
+      "role": null,
+      "obs_scene": "PGM - Player 01",
+      "srt_host": null
+    },
+    "input_02": {
+      "player_name": null,
+      "team": null,
+      "role": null,
+      "obs_scene": "PGM - Player 02",
+      "srt_mode": "off",
+      "srt_host": null,
+      "srt_port": 20002,
+      "srt_latency": 200
+    },
+    "input_03": {
+      "player_name": null,
+      "team": null,
+      "role": null,
+      "obs_scene": "PGM - Player 03",
+      "srt_mode": "off",
+      "srt_host": null,
+      "srt_port": null,
+      "srt_latency": 200
+    }
+  }
+}

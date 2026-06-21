@@ -1,0 +1,499 @@
+Excalibur - Gaming Contests Client
+==================================
+
+Overview
+--------
+
+Excalibur is a gaming contests client and broadcast companion system for running player-based gaming events.
+
+The project is designed around a simple split:
+
+- Players use a lightweight Windows client to identify themselves, choose what game/window to stream, select the correct audio sources, and connect to a destination provided by the operator.
+- Operators use the server and control plane to manage stream inputs, player mapping, previews, routing, monitoring, and broadcast operations.
+
+The player does not need to understand broadcast routing, matrix inputs, player slots, or streaming protocol details. The operator gives the player a destination such as:
+
+1.2.3.4:9003
+
+The client connects to that destination, while the server already knows how that port maps to the correct input.
+
+
+Project Goal
+------------
+
+The goal of Excalibur is to make gaming contest streaming reliable, simple for players, and controllable for operators.
+
+A player should be able to:
+
+- Install the client.
+- Enter a display name.
+- Keep a persistent player identity across reconnects.
+- Select the game or app window to stream.
+- Include only the intended game/app audio.
+- Include Discord audio.
+- Choose a microphone.
+- Enter the operator-provided destination IP and port.
+- Pick a latency/quality preset.
+- Click Start Streaming.
+- Recover automatically from common failures.
+
+An operator should be able to:
+
+- Allocate listener ports to player inputs.
+- Tell each player which IP and port to connect to.
+- See whether a player is online, streaming, degraded, reconnecting, or failed.
+- Preview incoming feeds.
+- Route player feeds into the broadcast matrix.
+- Diagnose capture, audio, encoder, network, and client-side failures.
+- Send basic remote commands such as restart stream, switch quality, and request logs.
+
+
+Core Principle
+--------------
+
+The client is intentionally player-friendly.
+
+It should not expose:
+
+- Player slot.
+- Matrix input ID.
+- SRT caller/listener terminology.
+- Routing concepts.
+- OBS scene mapping.
+- Server-side media configuration.
+
+Those responsibilities stay server-side and operator-owned.
+
+The only connection detail a player needs is the destination IP and port.
+
+
+Player Identity
+---------------
+
+The client keeps two separate identity concepts:
+
+- playerId: identifies the human/player across app restarts, reconnects, and future events.
+- sessionId: identifies one specific app run or streaming lifecycle.
+
+Example identity:
+
+{
+  "playerId": "player-123",
+  "sessionId": "uuid",
+  "displayName": "Idan"
+}
+
+This lets the operator understand that the same player may have multiple sessions over time, without tying the player identity directly to a server input or broadcast route.
+
+
+Player Client Features
+----------------------
+
+The Excalibur player client should include:
+
+- A destination card for IP, port, latency preset, and connection status.
+- An identity card for display name and stored player identity.
+- A source card for choosing the game/window to stream.
+- A refreshable window/app picker.
+- An audio card for selected app audio, Discord audio, and microphone.
+- Microphone selection from real Windows input devices.
+- Level meters for audio sources.
+- Mute toggles for microphone and Discord.
+- Quality presets such as 720p30, 1080p30, and 1080p60.
+- Experimental high-efficiency presets hidden until validated.
+- Start and Stop controls.
+- A status area showing reconnect state, current encoder, bitrate, dropped frames, and last error.
+- A capability summary showing capture, audio, microphone, and encoder availability.
+- Diagnostics with current streaming process status, last error, and copyable support logs.
+
+
+Capability Detection
+--------------------
+
+At startup, the client should detect the real machine capabilities and build the UI from that result.
+
+This avoids assuming that every player has the same GPU, Windows version, audio setup, Discord process, or microphone configuration.
+
+The client should detect:
+
+- Capture support.
+- Hardware encoding support.
+- Software encoding fallback availability.
+- Process-level app audio capture support.
+- Discord audio capture support.
+- Available microphone devices.
+- Operating system capability details.
+- GPU/vendor hints.
+- Streaming process feature support.
+
+The capability result should control the UI:
+
+- Enable quality presets only when the machine can realistically support them.
+- Hide experimental options unless they are supported and explicitly enabled.
+- Show warnings when process-level audio isolation is unavailable.
+- Populate microphone choices from actual devices.
+- Report capability details to the operator for remote troubleshooting.
+
+
+Capture Scope
+-------------
+
+The client should capture the selected game or app window as the primary video source.
+
+The preferred user flow is:
+
+1. The player opens the game.
+2. The player opens Excalibur.
+3. The player chooses the game/window from the source list.
+4. The client captures that window.
+5. The stream starts when the player clicks Start Streaming.
+
+The MVP should focus on borderless or fullscreen-windowed games, because some games and anti-cheat systems may block reliable capture in exclusive fullscreen mode.
+
+The client should detect black or empty frames clearly and show the player a useful warning instead of silently streaming a broken feed.
+
+
+Audio Scope
+-----------
+
+The MVP should not send the full desktop mix by default.
+
+It should send only:
+
+- Selected game/app audio.
+- Discord audio.
+- Selected microphone input.
+
+This is important because gaming contest broadcasts should avoid unrelated desktop sounds, private notifications, music, browser audio, or other accidental sources.
+
+Where possible, the client should isolate audio per process. If process-level capture is unavailable on the player's machine, the client may fall back to full system loopback only with a clear warning.
+
+Discord should be detected flexibly because players may run different Discord variants or multiple Discord processes. The UI should let the player choose the correct Discord audio source instead of relying on one hard-coded process name.
+
+
+Streaming Behavior
+------------------
+
+The player client streams to the destination provided by the operator.
+
+The operator may configure server listener ports such as:
+
+- Port 9001 maps to input_01.
+- Port 9002 maps to input_02.
+- Port 9003 maps to input_03.
+
+The player only sees:
+
+Connect to: 1.2.3.4:9003
+
+The client publishes a low-latency video/audio stream to that destination. The server receives it, generates preview output, and makes it available for broadcast routing.
+
+
+Quality And Latency
+-------------------
+
+The first production-ready path should use H.264 video with AAC audio.
+
+Quality presets should be simple:
+
+- 720p30 for lower bandwidth or weaker machines.
+- 1080p30 for standard quality.
+- 1080p60 for higher motion and stronger machines.
+
+High-efficiency video can be explored later, but it should remain experimental until the full receiver path, preview generation, broadcast ingest, scene switching, and server CPU impact are proven under multi-player load.
+
+The client should expose friendly quality and latency choices, not encoder internals.
+
+
+Control Channel
+---------------
+
+The client should maintain a bidirectional control connection to the server/control plane outside the media stream.
+
+This channel is used for:
+
+- Telemetry.
+- Stream state.
+- Capability reports.
+- Configuration status.
+- Diagnostics.
+- Client logs.
+- Remote commands.
+- Future operator-initiated streaming.
+
+Example telemetry:
+
+{
+  "playerId": "...",
+  "sessionId": "uuid",
+  "displayName": "Idan",
+  "source": "cs2.exe",
+  "streaming": true,
+  "fps": 30,
+  "bitrate": 4000,
+  "droppedFrames": 12,
+  "lastError": null
+}
+
+This lets the operator distinguish between:
+
+- A player who has not started streaming.
+- A capture failure.
+- An audio failure.
+- A streaming process failure.
+- A bad network path.
+- Dropped frames.
+- A disconnected client.
+- A server-side routing issue.
+
+
+Remote Commands
+---------------
+
+The operator should eventually be able to send remote commands to the client.
+
+Initial command examples:
+
+- restart_stream
+- switch_quality
+- request_log_upload
+
+Future command examples:
+
+- start_stream
+- stop_stream
+- push_config
+- upload_logs
+- remote_diagnostics
+
+The client should acknowledge commands and report success or failure in later telemetry.
+
+Commands should be idempotent where possible. They should also be logged locally so troubleshooting does not require remote desktop access to the player's PC.
+
+
+Reconnect Policy
+----------------
+
+Auto reconnect is always enabled.
+
+The UI may show:
+
+Auto reconnect: enabled
+
+But it should not provide a toggle to disable reconnect.
+
+The client should recover from:
+
+- Game/window temporarily closing and reopening.
+- Discord crash or restart.
+- Microphone disconnect and reconnect.
+- Temporary network failure.
+- Destination failure lasting around 10 seconds or longer.
+- Streaming process crash.
+- Encoder initialization failure after a retry backoff.
+
+The stream supervisor should use clear states:
+
+- idle
+- starting
+- streaming
+- degraded
+- reconnecting
+- failed
+
+Retries should use exponential backoff with a cap, but should continue while the player has not pressed Stop.
+
+
+Operator Mode
+-------------
+
+Operator Mode remains on the server/control-plane side.
+
+It owns:
+
+- Listener port allocation.
+- Input identity.
+- Player-to-port mapping.
+- Broadcast matrix routing.
+- Preview monitoring.
+- OBS scene mapping.
+- Server media configuration.
+- Remote diagnostics.
+- Remote command dispatch.
+
+The operator can tell a player:
+
+Connect to: 1.2.3.4:9003
+
+The server already understands what that means.
+
+
+Player Mode
+-----------
+
+Player Mode is the installed Excalibur client on the player's Windows machine.
+
+It owns:
+
+- Player identity.
+- Session identity.
+- Destination IP.
+- Destination port.
+- Latency preset.
+- Selected game/window.
+- Selected app audio.
+- Selected Discord audio.
+- Selected microphone.
+- Quality preset.
+- Local stream state.
+- Local reconnect behavior.
+- Local logs.
+
+It does not own:
+
+- Matrix input names.
+- Broadcast routes.
+- OBS scene logic.
+- Server-side media mappings.
+- Player slot assignment.
+
+
+Diagnostics And Logs
+--------------------
+
+The client should write local logs for:
+
+- Stream start.
+- Stream stop.
+- Streaming process lifecycle.
+- Capture errors.
+- Audio capture errors.
+- Reconnect attempts.
+- Encoder failures.
+- Destination/network failures.
+- Control Channel failures.
+- Remote command handling.
+- Capability detection results.
+
+The UI should provide a copyable support log so a player can quickly send useful information to the operator.
+
+The Control Channel should also report key diagnostic information so the operator can troubleshoot remotely.
+
+
+Packaging And Setup
+-------------------
+
+The client should be distributed as a small Windows installer.
+
+Players should not need to install separate media tools manually.
+
+The setup experience should eventually include:
+
+- Download installer.
+- Install Excalibur.
+- Open the app.
+- Enter display name.
+- Enter destination IP and port from the operator.
+- Select the game/window.
+- Select Discord audio.
+- Select microphone.
+- Choose quality.
+- Click Start Streaming.
+
+A short player-facing setup guide should be added once the app UI exists.
+
+
+Validation Plan
+---------------
+
+The project should be validated through automated tests and manual broadcast-style smoke tests.
+
+Automated validation should cover:
+
+- Destination validation.
+- Stream URL construction.
+- Config validation.
+- Capability normalization.
+- UI gating decisions.
+- Telemetry construction.
+- Command parsing.
+- Command acknowledgement.
+- Reconnect state transitions.
+- Window filtering where practical.
+
+Manual validation should cover:
+
+- Capturing a real game window.
+- Streaming to the matrix receiver.
+- Seeing the mapped input become active.
+- Preview updates in the control plane.
+- Local preview latency around 500ms-1000ms.
+- Game/app audio present.
+- Discord audio present.
+- Microphone audio present.
+- Unrelated desktop audio absent.
+- Audio/video sync over at least a 15 minute stream.
+- Start, Stop, and Restart without orphaned processes.
+- Recovery after temporary network loss.
+- Recovery after game restart.
+- Recovery after Discord restart.
+- Recovery after microphone reconnect.
+- Clean install and uninstall on a Windows machine or VM.
+
+
+First Real Milestone
+--------------------
+
+The first real milestone is not just proving that a stream command can run.
+
+The milestone is:
+
+- A player selects a CS2 window.
+- Excalibur streams the selected game to the matrix receiver.
+- The control plane sees the mapped input become active.
+- Preview updates within roughly 500ms-1000ms on a local network.
+- The app can stop and restart without orphaned streaming or capture processes.
+- H.264 hardware encoding is used successfully.
+- AAC audio is included.
+- Game/app audio, Discord audio, and microphone are all present.
+- Unrelated desktop audio is not included by default.
+- Control Channel telemetry appears in the operator UI or server logs.
+- Telemetry includes playerId, sessionId, capability summary, stream state, and errors.
+- Operator commands work for restart stream, switch quality, and request log upload.
+- Auto reconnect recovers from common broadcast failures.
+
+
+Key Risks
+---------
+
+Game/window capture reliability is the largest risk. The client should focus on reliable game capture from the start and clearly detect broken or black frames.
+
+Per-process audio capture is another major risk. The client should detect whether app audio isolation is available and show a clear warning if it falls back.
+
+Discord detection can be inconsistent because players may run different Discord builds or multiple Discord processes. The UI should allow explicit selection.
+
+Some games may block capture in exclusive fullscreen or through anti-cheat behavior. The MVP should document borderless or fullscreen-windowed mode.
+
+Simple early streaming paths may use more CPU than desired. If testing shows high load or poor latency, the project should move toward a lower-copy production capture and encode path.
+
+High-efficiency video may reduce bandwidth but adds compatibility and server CPU risk. It should stay experimental until the full receiver and broadcast path is proven.
+
+Hardware encoding behavior differs across player machines. Encoder selection should be isolated behind capability detection instead of assuming one vendor or device.
+
+SRT connectivity can fail because of firewall, NAT, or network issues. The client should show explicit connection errors and keep retrying while streaming is enabled.
+
+Bundled media components may carry licensing and distribution obligations. The project should document license notices before shipping installers.
+
+
+Product Summary
+---------------
+
+Excalibur is the player-side contest streaming client plus the operator-side control flow needed to run gaming broadcasts with multiple remote players.
+
+For players, it should feel like a simple contest app:
+
+Enter name, pick game, pick audio, enter destination, start streaming.
+
+For operators, it should provide reliable input mapping, previews, telemetry, remote commands, reconnect behavior, and diagnostics.
+
+The main design rule is that players should only see simple contest-streaming concepts, while routing and broadcast complexity remain server-side.

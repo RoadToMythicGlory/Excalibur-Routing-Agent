@@ -21,9 +21,11 @@ class MatrixRequestHandler(BaseHTTPRequestHandler):
     """Dependency-free HTTP surface for the control plane and CS2 GSI.
 
     Routes:
-      GET  /api/state    -> full matrix/bus/latency/story snapshot
-      POST /gsi          -> CS2 Game State Integration payload sink
-      POST /api/control  -> operator command (manual cut, lock, hold, emergency)
+      GET  /api/state        -> full matrix/bus/latency/story snapshot
+      GET  /api/config       -> editable input/output configuration
+      POST /gsi              -> CS2 Game State Integration payload sink
+      POST /api/control      -> operator command (manual cut, lock, hold, emergency)
+      POST /api/config/input -> set input metadata (name, team, role, scene)
     """
 
     server: MatrixHTTPServer
@@ -59,10 +61,32 @@ class MatrixRequestHandler(BaseHTTPRequestHandler):
         if self.path.startswith("/api/state"):
             self._send(200, self.server.service.state_snapshot())
             return
+        if self.path.startswith("/api/config"):
+            self._send(200, self.server.service.config_snapshot())
+            return
+        if self.path.startswith("/api/preview/"):
+            self._send_preview()
+            return
         if self.path == "/" or self.path.startswith("/health"):
             self._send(200, {"status": "ok", "now_ms": now_ms()})
             return
         self._send(404, {"error": "not_found"})
+
+    def _send_preview(self) -> None:
+        # /api/preview/<input_id>.jpg (ignore any cache-busting query string)
+        tail = self.path[len("/api/preview/") :].split("?", 1)[0]
+        input_id = tail[:-4] if tail.endswith(".jpg") else tail
+        image = self.server.service.preview_jpeg(input_id)
+        if image is None:
+            self._send(404, {"error": "no_signal", "input_id": input_id})
+            return
+        self.send_response(200)
+        self.send_header("Content-Type", "image/jpeg")
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Content-Length", str(len(image)))
+        self.end_headers()
+        self.wfile.write(image)
 
     def do_POST(self) -> None:  # noqa: N802 - http verb
         payload = self._read_json()
@@ -74,7 +98,22 @@ class MatrixRequestHandler(BaseHTTPRequestHandler):
             decision = self._handle_control(payload)
             self._send(200, decision)
             return
+        if self.path.startswith("/api/config/input"):
+            self._handle_input_config(payload)
+            return
         self._send(404, {"error": "not_found"})
+
+    def _handle_input_config(self, payload: dict) -> None:
+        input_id = payload.get("input_id")
+        if not input_id:
+            self._send(400, {"error": "missing_input_id"})
+            return
+        try:
+            saved = self.server.service.update_input_config(input_id, payload)
+        except KeyError as error:
+            self._send(404, {"error": str(error)})
+            return
+        self._send(200, {"status": "ok", "input_id": input_id, "config": saved})
 
     def _handle_control(self, payload: dict) -> dict:
         try:

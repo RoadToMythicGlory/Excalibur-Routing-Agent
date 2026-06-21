@@ -1,0 +1,24 @@
+# Real media ingest for the matrix frame taps.
+# Encoders publish SRT into MediaMTX; the matrix reads each stream back (RTSP by
+# default) and FFmpeg writes a low-res JPEG preview per input at `fps`.
+
+preview_dir: .preview
+freshness_ms: 2000
+
+inputs:
+  # MediaMTX republishes every published path over RTSP on :8554.
+  # Publish to it with streamid "publish:input_01" (see docs/MEDIA.md).
+  - id: input_01
+    read_url: "rtsp://127.0.0.1:8554/input_01"
+    width: 480
+    fps: 5
+  - id: input_02
+    read_url: "rtsp://127.0.0.1:8554/input_02"
+    width: 480
+    fps: 5
+  - id: input_03
+    read_url: "rtsp://127.0.0.1:8554/input_03"
+    width: 480
+    fps: 5
+  # Alternative: read SRT directly from MediaMTX instead of RTSP, e.g.
+  #   read_url: "srt://127.0.0.1:8890?streamid=read:input_01"

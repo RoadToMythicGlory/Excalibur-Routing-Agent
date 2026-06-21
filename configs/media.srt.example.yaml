@@ -1,0 +1,20 @@
+# Direct SRT ingest (no MediaMTX) - the matrix itself listens on an SRT port per
+# input. Point any software encoder at these ports as an SRT *caller*.
+# Use this for the quickest path; use configs/media.example.yaml for MediaMTX.
+
+preview_dir: .preview
+freshness_ms: 3000
+
+inputs:
+  - id: input_01
+    read_url: "srt://0.0.0.0:9001?mode=listener&latency=200"
+    width: 480
+    fps: 5
+  - id: input_02
+    read_url: "srt://0.0.0.0:9002?mode=listener&latency=200"
+    width: 480
+    fps: 5
+  - id: input_03
+    read_url: "srt://0.0.0.0:9003?mode=listener&latency=200"
+    width: 480
+    fps: 5

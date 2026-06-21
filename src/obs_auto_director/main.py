@@ -16,8 +16,28 @@ logger = logging.getLogger(__name__)
 
 def collect_expected_scenes(app_config: AppConfig, profile: GameProfile) -> set[str]:
     scenes = {app_config.director.default_scene}
-    scenes.update(event.scene for event in profile.events)
+    scenes.update(
+        event.scene for event in profile.all_events if event.scene != "dynamic"
+    )
+    scenes.update(source.scene for source in profile.sources.values())
+    if profile.defaults.fallback_scene:
+        scenes.add(profile.defaults.fallback_scene)
     return scenes
+
+
+def apply_profile_defaults(app_config: AppConfig, profile: GameProfile) -> None:
+    """Let the game profile's ``defaults`` block steer director timing.
+
+    The app config remains the base; the profile overrides cut cadence, idle
+    fallback, and the fallback scene so the YAML the operator tunes is the
+    single source of truth for pacing.
+    """
+    defaults = profile.defaults
+    director = app_config.director
+    director.switch_cooldown_sec = float(defaults.min_cut_gap_sec)
+    director.fallback_after_sec = float(defaults.return_to_observer_after_idle_sec)
+    if defaults.fallback_scene:
+        director.default_scene = defaults.fallback_scene
 
 
 class StatusReporter:
@@ -79,10 +99,11 @@ def run(config_path: Path, dry_run_override: bool | None, status_interval: float
     config_dir = config_path.parent
     profile_path = (config_dir / app_config.game_profile).resolve()
     game_profile = load_game_profile(profile_path)
+    apply_profile_defaults(app_config, game_profile)
 
     capture = CaptureManager(app_config.sources)
     evaluator = RuleEvaluator(game_profile, config_dir=config_dir)
-    director = DirectorEngine(app_config.director)
+    director = DirectorEngine(app_config.director, profile=game_profile)
     obs_router = ObsSceneRouter(app_config.obs)
 
     expected_scenes = collect_expected_scenes(app_config, game_profile)

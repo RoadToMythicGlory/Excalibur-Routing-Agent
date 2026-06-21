@@ -1,17 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { fetchState } from "@/lib/api";
+import { fetchState, sendControl } from "@/lib/api";
 import type { MatrixSnapshot } from "@/lib/types";
 import { MatrixGrid, OutputsGrid } from "@/components/MatrixGrid";
 import { StoryPanel } from "@/components/StoryPanel";
 import { LatencyPanel } from "@/components/LatencyPanel";
 import { AuditPanel } from "@/components/AuditPanel";
 import { OperatorControls } from "@/components/OperatorControls";
+import { ConfigPanel } from "@/components/ConfigPanel";
 
 export default function Page() {
   const [state, setState] = useState<MatrixSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [tick, setTick] = useState(0);
+  const [selectedInput, setSelectedInput] = useState<string | null>(null);
+  const [takingInput, setTakingInput] = useState<string | null>(null);
+  const [takeStatus, setTakeStatus] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -21,6 +26,7 @@ export default function Page() {
         if (active) {
           setState(next);
           setError(null);
+          setTick((value) => value + 1);
         }
       } catch (err) {
         if (active) setError((err as Error).message);
@@ -36,6 +42,29 @@ export default function Page() {
 
   const programInput =
     state?.matrix.outputs.find((o) => o.kind === "program")?.input_id ?? null;
+  const programOutput =
+    state?.matrix.outputs.find((o) => o.kind === "program")?.id ?? "output_01";
+
+  async function takeInput(inputId: string) {
+    setTakingInput(inputId);
+    try {
+      const result = await sendControl({
+        action: "manual_cut",
+        target_output: programOutput,
+        candidate_input: inputId,
+        operator: "mcr-ui",
+        reason: "mcr_take",
+      });
+      setTakeStatus(`Take ${inputId}: ${result.outcome ?? result.error}`);
+      if (result.outcome === "accepted") {
+        setSelectedInput(null);
+      }
+    } catch (err) {
+      setTakeStatus(`error: ${(err as Error).message}`);
+    } finally {
+      setTakingInput(null);
+    }
+  }
 
   return (
     <main className="app">
@@ -60,7 +89,20 @@ export default function Page() {
       {state ? (
         <div className="grid">
           <div>
-            <MatrixGrid inputs={state.matrix.inputs} programInput={programInput} />
+            <MatrixGrid
+              inputs={state.matrix.inputs}
+              programInput={programInput}
+              mediaEnabled={state.media_enabled}
+              tick={tick}
+              selectedInput={selectedInput}
+              takingInput={takingInput}
+              takeStatus={takeStatus}
+              onSelectInput={(inputId) => {
+                setSelectedInput(inputId);
+                setTakeStatus(null);
+              }}
+              onTakeInput={takeInput}
+            />
             <OutputsGrid outputs={state.matrix.outputs} />
             <OperatorControls
               inputs={state.matrix.inputs}
@@ -69,6 +111,7 @@ export default function Page() {
             <AuditPanel audit={state.audit} />
           </div>
           <div>
+            <ConfigPanel />
             <StoryPanel stories={state.intelligence} />
             <LatencyPanel latency={state.latency} />
           </div>

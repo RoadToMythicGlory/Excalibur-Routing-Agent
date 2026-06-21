@@ -5,8 +5,11 @@ import type { AuditRow } from "@/lib/types";
 export function AuditPanel({ audit }: { audit: AuditRow[] }) {
   const rows = [...audit].reverse().slice(0, 20);
   return (
-    <div className="panel">
-      <h2>Routing engine audit</h2>
+    <details className="panel collapsible-panel">
+      <summary>
+        <h2>Routing engine audit</h2>
+        <span className="meta">{rows.length} recent</span>
+      </summary>
       <table>
         <thead>
           <tr>
@@ -33,6 +36,6 @@ export function AuditPanel({ audit }: { audit: AuditRow[] }) {
           ))}
         </tbody>
       </table>
-    </div>
+    </details>
   );
 }

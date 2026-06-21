@@ -74,6 +74,7 @@ class OutputSlot:
     kind: OutputKind = OutputKind.RESERVED
     state: SlotState = SlotState.INACTIVE
     obs_scene: str | None = None
+    uri: str | None = None
 
 
 @dataclass

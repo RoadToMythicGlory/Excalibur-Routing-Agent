@@ -1,0 +1,24 @@
+# Minimal MediaMTX config for the matrix ingest hub.
+# Encoders publish SRT here; the matrix reads streams back over RTSP.
+# Run with:  mediamtx configs/mediamtx.yml
+
+logLevel: info
+
+# SRT ingest (publishers connect as callers with streamid publish:<path>).
+srt: yes
+srtAddress: :8890
+
+# RTSP is how the matrix reads streams back for the FFmpeg frame taps.
+rtsp: yes
+rtspAddress: :8554
+
+# WebRTC/HLS left on defaults for optional browser playback later.
+webrtc: yes
+hls: yes
+
+# Allow any path to be published/read without auth for local development.
+pathDefaults:
+  source: publisher
+
+paths:
+  all_others:

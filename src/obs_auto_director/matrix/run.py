@@ -3,13 +3,32 @@ from __future__ import annotations
 import argparse
 import logging
 
+from obs_auto_director.config import load_yaml
 from obs_auto_director.matrix.demo import (
     print_summary,
     run_clutch_demo,
     start_live_simulation,
 )
+from obs_auto_director.matrix.media.ingest import MediaInput
 from obs_auto_director.matrix.server import serve
 from obs_auto_director.matrix.service import build_default_service
+
+
+def load_media_inputs(path: str) -> tuple[list[MediaInput], str, float]:
+    data = load_yaml(path)
+    preview_dir = data.get("preview_dir", ".preview")
+    freshness_ms = float(data.get("freshness_ms", 2000.0))
+    inputs = [
+        MediaInput(
+            input_id=item["id"],
+            read_url=item["read_url"],
+            width=int(item.get("width", 480)),
+            fps=float(item.get("fps", 5.0)),
+            quality=int(item.get("quality", 7)),
+        )
+        for item in data.get("inputs", [])
+    ]
+    return inputs, preview_dir, freshness_ms
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -30,6 +49,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--simulate",
         action="store_true",
         help="Continuously feed the simulated clutch round so the UI shows live data.",
+    )
+    srv.add_argument(
+        "--media",
+        metavar="MEDIA_CONFIG",
+        help="Path to a media config YAML to enable real FFmpeg/SRT ingest.",
     )
 
     parser.add_argument("--verbose", "-v", action="store_true")
@@ -52,6 +76,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "serve":
         service = build_default_service(obs_dry_run=not args.live)
         service.connect_obs()
+        if args.media:
+            inputs, preview_dir, freshness_ms = load_media_inputs(args.media)
+            service.enable_media(inputs, preview_dir=preview_dir, freshness_ms=freshness_ms)
         if args.simulate:
             start_live_simulation(service)
         serve(service, host=args.host, port=args.port)

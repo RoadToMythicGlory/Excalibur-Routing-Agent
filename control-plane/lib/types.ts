@@ -23,7 +23,16 @@ export interface OutputSlot {
   kind: string;
   state: SlotState;
   obs_scene: string | null;
+  uri: string | null;
   input_id: string | null;
+}
+
+export interface ProgramStatus {
+  publish_url: string;
+  source_input: string | null;
+  source_url: string | null;
+  running: boolean;
+  active: boolean;
 }
 
 export interface RouteRow {
@@ -86,6 +95,8 @@ export interface MatchSnapshot {
 }
 
 export interface MatrixSnapshot {
+  media_enabled: boolean;
+  program: ProgramStatus;
   matrix: {
     inputs: InputSlot[];
     outputs: OutputSlot[];

@@ -1,10 +1,288 @@
 game: "Counter-Strike 2"
 
+version: "1.0.0"
+
+runtime:
+  config_type: "auto_director_rules"
+  resolution: [1920, 1080]
+  color_space: "BGR"
+  note: "Full expanded YAML for 10 CS2 player POV feeds plus observer. No templates or placeholders required."
+
+defaults:
+  fallback_scene: "CS2 - Observer"
+  decision_tick_ms: 250
+  min_cut_gap_sec: 1.2
+  default_hold_sec: 3.0
+  max_hold_sec: 8.0
+  stable_frames: 2
+  rule_mode: "any"
+  return_to_observer_after_idle_sec: 2.0
+
+matrix:
+  enabled: true
+  program_output: "output_01"
+  preview_output: "output_02"
+  multiview_output: "output_03"
+  clean_output: "output_04"
+
+sources:
+  observer:
+    kind: "observer"
+    scene: "CS2 - Observer"
+    output_route_source: "observer"
+  player_1:
+    kind: "player_pov"
+    scene: "CS2 - Player 1"
+    output_route_source: "input_01"
+  player_2:
+    kind: "player_pov"
+    scene: "CS2 - Player 2"
+    output_route_source: "input_02"
+  player_3:
+    kind: "player_pov"
+    scene: "CS2 - Player 3"
+    output_route_source: "input_03"
+  player_4:
+    kind: "player_pov"
+    scene: "CS2 - Player 4"
+    output_route_source: "input_04"
+  player_5:
+    kind: "player_pov"
+    scene: "CS2 - Player 5"
+    output_route_source: "input_05"
+  player_6:
+    kind: "player_pov"
+    scene: "CS2 - Player 6"
+    output_route_source: "input_06"
+  player_7:
+    kind: "player_pov"
+    scene: "CS2 - Player 7"
+    output_route_source: "input_07"
+  player_8:
+    kind: "player_pov"
+    scene: "CS2 - Player 8"
+    output_route_source: "input_08"
+  player_9:
+    kind: "player_pov"
+    scene: "CS2 - Player 9"
+    output_route_source: "input_09"
+  player_10:
+    kind: "player_pov"
+    scene: "CS2 - Player 10"
+    output_route_source: "input_10"
+
+scoring:
+  enabled: true
+  weights:
+    kill_feed_detected: 120
+    double_kill_detected: 160
+    triple_kill_detected: 220
+    clutch_1v1: 180
+    clutch_1v2: 150
+    clutch_1v3: 130
+    low_health: 65
+    sniper_scoped_action: 55
+    bomb_planted: 110
+    defuse_started: 170
+    molotov_throw: 45
+    grenade_throw: 38
+    flashbang_throw: 35
+    smoke_throw: 30
+    molotov_fire_impact: 40
+    active_combat: 25
+  decay:
+    kill_sec: 6
+    objective_sec: 8
+    utility_sec: 3
+    combat_sec: 2
+    clutch_sec: 10
+
+cut_rules:
+  - name: "never_cut_too_fast"
+    type: "cooldown"
+    min_gap_sec: 1.2
+  - name: "major_events_can_interrupt"
+    type: "interrupt_priority"
+    min_priority: 90
+  - name: "prefer_current_source_when_score_close"
+    type: "score_margin"
+    margin: 15
+  - name: "return_to_observer_when_idle"
+    type: "fallback"
+    scene: "CS2 - Observer"
+    after_idle_sec: 2.0
+  - name: "do_not_cut_to_unhealthy_source"
+    type: "source_health_gate"
+    require_healthy: true
+
+observer_events:
+  - name: "kill_feed_detected"
+    category: "kill"
+    source: "observer"
+    target_source: "dynamic"
+    scene: "dynamic"
+    description: "Detect new kill feed entry and route to killer POV if mapped."
+    priority: 100
+    hold_sec: 5.0
+    stable_frames: 1
+    interrupt: true
+    rules:
+      - type: "kill_feed_change"
+        source: "observer"
+        region: [1320, 80, 560, 260]
+        min_new_entries: 1
+
+  - name: "double_kill_detected"
+    category: "kill"
+    source: "observer"
+    target_source: "dynamic"
+    scene: "dynamic"
+    description: "Same player gets two kills inside a short window."
+    priority: 115
+    hold_sec: 6.0
+    stable_frames: 1
+    interrupt: true
+    rules:
+      - type: "kill_feed_multi"
+        source: "observer"
+        region: [1320, 80, 560, 260]
+        same_player_kills: 2
+        window_sec: 5
+
+  - name: "triple_kill_detected"
+    category: "kill"
+    source: "observer"
+    target_source: "dynamic"
+    scene: "dynamic"
+    description: "Same player gets three kills inside a short window."
+    priority: 130
+    hold_sec: 7.0
+    stable_frames: 1
+    interrupt: true
+    rules:
+      - type: "kill_feed_multi"
+        source: "observer"
+        region: [1320, 80, 560, 260]
+        same_player_kills: 3
+        window_sec: 7
+
+  - name: "clutch_1v1"
+    category: "clutch"
+    source: "observer"
+    target_source: "dynamic"
+    scene: "dynamic"
+    description: "Only one player alive on each team."
+    priority: 125
+    hold_sec: 7.0
+    stable_frames: 1
+    interrupt: true
+    rules:
+      - type: "alive_count"
+        source: "observer"
+        team_a_alive: 1
+        team_b_alive: 1
+
+  - name: "clutch_1v2"
+    category: "clutch"
+    source: "observer"
+    target_source: "dynamic"
+    scene: "dynamic"
+    description: "One player alive against two opponents."
+    priority: 115
+    hold_sec: 6.5
+    stable_frames: 1
+    interrupt: true
+    rules:
+      - type: "alive_count"
+        source: "observer"
+        one_side_alive: 1
+        other_side_alive: 2
+
+  - name: "clutch_1v3"
+    category: "clutch"
+    source: "observer"
+    target_source: "dynamic"
+    scene: "dynamic"
+    description: "One player alive against three opponents."
+    priority: 105
+    hold_sec: 6.0
+    stable_frames: 1
+    interrupt: true
+    rules:
+      - type: "alive_count"
+        source: "observer"
+        one_side_alive: 1
+        other_side_alive: 3
+
+  - name: "bomb_planted"
+    category: "objective"
+    source: "observer"
+    scene: "CS2 - Observer"
+    description: "Bomb planted. Prefer observer unless a higher priority fight is active."
+    priority: 95
+    hold_sec: 4.0
+    stable_frames: 1
+    interrupt: true
+    rules:
+      - type: "template"
+        source: "observer"
+        region: [760, 40, 400, 120]
+        template_path: "../assets/templates/cs2/bomb_planted.png"
+        threshold: 0.78
+
+  - name: "defuse_started"
+    category: "objective"
+    source: "observer"
+    target_source: "dynamic"
+    scene: "dynamic"
+    description: "Defuse started. Cut to defuser POV if mapped, otherwise observer."
+    priority: 120
+    hold_sec: 6.0
+    stable_frames: 1
+    interrupt: true
+    rules:
+      - type: "template"
+        source: "observer"
+        region: [760, 760, 420, 160]
+        template_path: "../assets/templates/cs2/defuse_bar.png"
+        threshold: 0.75
+
+  - name: "observer_round_transition"
+    category: "round_state"
+    source: "observer"
+    scene: "CS2 - Observer"
+    description: "Observer view during scoreboard, round transition, or broad round state."
+    priority: 10
+    hold_sec: 3.0
+    stable_frames: 2
+    rules:
+      - type: "region_brightness"
+        source: "observer"
+        region: [640, 90, 640, 110]
+        operator: "above"
+        threshold: 160
+
+  - name: "scoreboard_open"
+    category: "round_state"
+    source: "observer"
+    scene: "CS2 - Observer"
+    description: "Scoreboard is open. Prefer observer."
+    priority: 12
+    hold_sec: 2.5
+    stable_frames: 2
+    rules:
+      - type: "template"
+        source: "observer"
+        region: [320, 120, 1280, 760]
+        template_path: "../assets/templates/cs2/scoreboard_layout.png"
+        threshold: 0.72
+
 events:
   - name: "player_1_critical_survival"
     category: "survival"
+    source: "player_1"
     scene: "CS2 - Player 1"
-    description: "Player 1 appears to be low health; hold the POV for the clutch moment."
+    description: "Player 1 appears low health. Hold POV for clutch/survival."
     priority: 90
     hold_sec: 6.0
     stable_frames: 2
@@ -12,22 +290,6 @@ events:
     rules:
       - type: "region_color"
         source: "player_1"
-        region: [40, 930, 220, 95]
-        lower_bgr: [0, 0, 120]
-        upper_bgr: [90, 90, 255]
-        min_ratio: 0.18
-
-  - name: "player_2_critical_survival"
-    category: "survival"
-    scene: "CS2 - Player 2"
-    description: "Player 2 appears to be low health; hold the POV for the clutch moment."
-    priority: 90
-    hold_sec: 6.0
-    stable_frames: 2
-    interrupt: true
-    rules:
-      - type: "region_color"
-        source: "player_2"
         region: [40, 930, 220, 95]
         lower_bgr: [0, 0, 120]
         upper_bgr: [90, 90, 255]
@@ -35,8 +297,9 @@ events:
 
   - name: "player_1_sniper_scoped_action"
     category: "sniper"
+    source: "player_1"
     scene: "CS2 - Player 1"
-    description: "Player 1 is scoped with a sniper and has center-screen action."
+    description: "Player 1 is scoped with sniper and has center-screen action."
     priority: 80
     hold_sec: 5.0
     stable_frames: 1
@@ -49,36 +312,17 @@ events:
         threshold: 0.80
       - type: "motion"
         source: "player_1"
-        region: [760, 360, 400, 260]
-        threshold: 22
-        min_ratio: 0.04
-
-  - name: "player_2_sniper_scoped_action"
-    category: "sniper"
-    scene: "CS2 - Player 2"
-    description: "Player 2 is scoped with a sniper and has center-screen action."
-    priority: 80
-    hold_sec: 5.0
-    stable_frames: 1
-    rule_mode: "all"
-    rules:
-      - type: "template"
-        source: "player_2"
-        region: [0, 0, 1920, 1080]
-        template_path: "../assets/templates/cs2/scope_overlay.png"
-        threshold: 0.80
-      - type: "motion"
-        source: "player_2"
         region: [760, 360, 400, 260]
         threshold: 22
         min_ratio: 0.04
 
   - name: "player_1_molotov_throw"
     category: "utility"
+    source: "player_1"
     scene: "CS2 - Player 1"
-    description: "Player 1 selected or threw a molotov/incendiary with hand-region motion."
+    description: "Player 1 selected or threw molotov throw."
     priority: 70
-    hold_sec: 4.0
+    hold_sec: 3.5
     stable_frames: 1
     rule_mode: "all"
     rules:
@@ -89,34 +333,15 @@ events:
         threshold: 0.78
       - type: "motion"
         source: "player_1"
-        region: [1120, 560, 620, 420]
-        threshold: 24
-        min_ratio: 0.05
-
-  - name: "player_2_molotov_throw"
-    category: "utility"
-    scene: "CS2 - Player 2"
-    description: "Player 2 selected or threw a molotov/incendiary with hand-region motion."
-    priority: 70
-    hold_sec: 4.0
-    stable_frames: 1
-    rule_mode: "all"
-    rules:
-      - type: "template"
-        source: "player_2"
-        region: [1260, 760, 520, 260]
-        template_path: "../assets/templates/cs2/molotov_icon.png"
-        threshold: 0.78
-      - type: "motion"
-        source: "player_2"
         region: [1120, 560, 620, 420]
         threshold: 24
         min_ratio: 0.05
 
   - name: "player_1_grenade_throw"
     category: "utility"
+    source: "player_1"
     scene: "CS2 - Player 1"
-    description: "Player 1 selected or threw a grenade with hand-region motion."
+    description: "Player 1 selected or threw grenade throw."
     priority: 68
     hold_sec: 3.5
     stable_frames: 1
@@ -133,28 +358,51 @@ events:
         threshold: 24
         min_ratio: 0.05
 
-  - name: "player_2_grenade_throw"
+  - name: "player_1_flashbang_throw"
     category: "utility"
-    scene: "CS2 - Player 2"
-    description: "Player 2 selected or threw a grenade with hand-region motion."
-    priority: 68
-    hold_sec: 3.5
+    source: "player_1"
+    scene: "CS2 - Player 1"
+    description: "Player 1 selected or threw flashbang throw."
+    priority: 66
+    hold_sec: 3.0
     stable_frames: 1
     rule_mode: "all"
     rules:
       - type: "template"
-        source: "player_2"
+        source: "player_1"
         region: [1260, 760, 520, 260]
-        template_path: "../assets/templates/cs2/grenade_icon.png"
+        template_path: "../assets/templates/cs2/flashbang_icon.png"
         threshold: 0.78
       - type: "motion"
-        source: "player_2"
+        source: "player_1"
+        region: [1120, 560, 620, 420]
+        threshold: 24
+        min_ratio: 0.05
+
+  - name: "player_1_smoke_throw"
+    category: "utility"
+    source: "player_1"
+    scene: "CS2 - Player 1"
+    description: "Player 1 selected or threw smoke throw."
+    priority: 62
+    hold_sec: 3.0
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_1"
+        region: [1260, 760, 520, 260]
+        template_path: "../assets/templates/cs2/smoke_icon.png"
+        threshold: 0.78
+      - type: "motion"
+        source: "player_1"
         region: [1120, 560, 620, 420]
         threshold: 24
         min_ratio: 0.05
 
   - name: "player_1_molotov_fire_impact"
     category: "utility"
+    source: "player_1"
     scene: "CS2 - Player 1"
     description: "Orange fire-like region appears on Player 1 POV after utility impact."
     priority: 65
@@ -168,8 +416,146 @@ events:
         upper_bgr: [90, 210, 255]
         min_ratio: 0.08
 
+  - name: "player_1_active_combat"
+    category: "combat"
+    source: "player_1"
+    scene: "CS2 - Player 1"
+    description: "Generic motion-heavy combat-like action on Player 1 POV."
+    priority: 40
+    hold_sec: 3.0
+    stable_frames: 3
+    rules:
+      - type: "motion"
+        source: "player_1"
+        region: [420, 220, 1080, 520]
+        threshold: 26
+        min_ratio: 0.08
+
+  - name: "player_2_critical_survival"
+    category: "survival"
+    source: "player_2"
+    scene: "CS2 - Player 2"
+    description: "Player 2 appears low health. Hold POV for clutch/survival."
+    priority: 90
+    hold_sec: 6.0
+    stable_frames: 2
+    interrupt: true
+    rules:
+      - type: "region_color"
+        source: "player_2"
+        region: [40, 930, 220, 95]
+        lower_bgr: [0, 0, 120]
+        upper_bgr: [90, 90, 255]
+        min_ratio: 0.18
+
+  - name: "player_2_sniper_scoped_action"
+    category: "sniper"
+    source: "player_2"
+    scene: "CS2 - Player 2"
+    description: "Player 2 is scoped with sniper and has center-screen action."
+    priority: 80
+    hold_sec: 5.0
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_2"
+        region: [0, 0, 1920, 1080]
+        template_path: "../assets/templates/cs2/scope_overlay.png"
+        threshold: 0.80
+      - type: "motion"
+        source: "player_2"
+        region: [760, 360, 400, 260]
+        threshold: 22
+        min_ratio: 0.04
+
+  - name: "player_2_molotov_throw"
+    category: "utility"
+    source: "player_2"
+    scene: "CS2 - Player 2"
+    description: "Player 2 selected or threw molotov throw."
+    priority: 70
+    hold_sec: 3.5
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_2"
+        region: [1260, 760, 520, 260]
+        template_path: "../assets/templates/cs2/molotov_icon.png"
+        threshold: 0.78
+      - type: "motion"
+        source: "player_2"
+        region: [1120, 560, 620, 420]
+        threshold: 24
+        min_ratio: 0.05
+
+  - name: "player_2_grenade_throw"
+    category: "utility"
+    source: "player_2"
+    scene: "CS2 - Player 2"
+    description: "Player 2 selected or threw grenade throw."
+    priority: 68
+    hold_sec: 3.5
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_2"
+        region: [1260, 760, 520, 260]
+        template_path: "../assets/templates/cs2/grenade_icon.png"
+        threshold: 0.78
+      - type: "motion"
+        source: "player_2"
+        region: [1120, 560, 620, 420]
+        threshold: 24
+        min_ratio: 0.05
+
+  - name: "player_2_flashbang_throw"
+    category: "utility"
+    source: "player_2"
+    scene: "CS2 - Player 2"
+    description: "Player 2 selected or threw flashbang throw."
+    priority: 66
+    hold_sec: 3.0
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_2"
+        region: [1260, 760, 520, 260]
+        template_path: "../assets/templates/cs2/flashbang_icon.png"
+        threshold: 0.78
+      - type: "motion"
+        source: "player_2"
+        region: [1120, 560, 620, 420]
+        threshold: 24
+        min_ratio: 0.05
+
+  - name: "player_2_smoke_throw"
+    category: "utility"
+    source: "player_2"
+    scene: "CS2 - Player 2"
+    description: "Player 2 selected or threw smoke throw."
+    priority: 62
+    hold_sec: 3.0
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_2"
+        region: [1260, 760, 520, 260]
+        template_path: "../assets/templates/cs2/smoke_icon.png"
+        threshold: 0.78
+      - type: "motion"
+        source: "player_2"
+        region: [1120, 560, 620, 420]
+        threshold: 24
+        min_ratio: 0.05
+
   - name: "player_2_molotov_fire_impact"
     category: "utility"
+    source: "player_2"
     scene: "CS2 - Player 2"
     description: "Orange fire-like region appears on Player 2 POV after utility impact."
     priority: 65
@@ -183,24 +569,11 @@ events:
         upper_bgr: [90, 210, 255]
         min_ratio: 0.08
 
-  - name: "player_1_active_combat"
-    category: "combat"
-    scene: "CS2 - Player 1"
-    description: "Generic motion-heavy action on Player 1 POV."
-    priority: 40
-    hold_sec: 3.0
-    stable_frames: 3
-    rules:
-      - type: "motion"
-        source: "player_1"
-        region: [420, 220, 1080, 520]
-        threshold: 26
-        min_ratio: 0.08
-
   - name: "player_2_active_combat"
     category: "combat"
+    source: "player_2"
     scene: "CS2 - Player 2"
-    description: "Generic motion-heavy action on Player 2 POV."
+    description: "Generic motion-heavy combat-like action on Player 2 POV."
     priority: 40
     hold_sec: 3.0
     stable_frames: 3
@@ -211,16 +584,1227 @@ events:
         threshold: 26
         min_ratio: 0.08
 
-  - name: "observer_round_transition"
-    category: "round_state"
-    scene: "CS2 - Observer"
-    description: "Observer view during scoreboard, round transition, or broad round state."
-    priority: 10
+  - name: "player_3_critical_survival"
+    category: "survival"
+    source: "player_3"
+    scene: "CS2 - Player 3"
+    description: "Player 3 appears low health. Hold POV for clutch/survival."
+    priority: 90
+    hold_sec: 6.0
+    stable_frames: 2
+    interrupt: true
+    rules:
+      - type: "region_color"
+        source: "player_3"
+        region: [40, 930, 220, 95]
+        lower_bgr: [0, 0, 120]
+        upper_bgr: [90, 90, 255]
+        min_ratio: 0.18
+
+  - name: "player_3_sniper_scoped_action"
+    category: "sniper"
+    source: "player_3"
+    scene: "CS2 - Player 3"
+    description: "Player 3 is scoped with sniper and has center-screen action."
+    priority: 80
+    hold_sec: 5.0
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_3"
+        region: [0, 0, 1920, 1080]
+        template_path: "../assets/templates/cs2/scope_overlay.png"
+        threshold: 0.80
+      - type: "motion"
+        source: "player_3"
+        region: [760, 360, 400, 260]
+        threshold: 22
+        min_ratio: 0.04
+
+  - name: "player_3_molotov_throw"
+    category: "utility"
+    source: "player_3"
+    scene: "CS2 - Player 3"
+    description: "Player 3 selected or threw molotov throw."
+    priority: 70
+    hold_sec: 3.5
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_3"
+        region: [1260, 760, 520, 260]
+        template_path: "../assets/templates/cs2/molotov_icon.png"
+        threshold: 0.78
+      - type: "motion"
+        source: "player_3"
+        region: [1120, 560, 620, 420]
+        threshold: 24
+        min_ratio: 0.05
+
+  - name: "player_3_grenade_throw"
+    category: "utility"
+    source: "player_3"
+    scene: "CS2 - Player 3"
+    description: "Player 3 selected or threw grenade throw."
+    priority: 68
+    hold_sec: 3.5
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_3"
+        region: [1260, 760, 520, 260]
+        template_path: "../assets/templates/cs2/grenade_icon.png"
+        threshold: 0.78
+      - type: "motion"
+        source: "player_3"
+        region: [1120, 560, 620, 420]
+        threshold: 24
+        min_ratio: 0.05
+
+  - name: "player_3_flashbang_throw"
+    category: "utility"
+    source: "player_3"
+    scene: "CS2 - Player 3"
+    description: "Player 3 selected or threw flashbang throw."
+    priority: 66
     hold_sec: 3.0
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_3"
+        region: [1260, 760, 520, 260]
+        template_path: "../assets/templates/cs2/flashbang_icon.png"
+        threshold: 0.78
+      - type: "motion"
+        source: "player_3"
+        region: [1120, 560, 620, 420]
+        threshold: 24
+        min_ratio: 0.05
+
+  - name: "player_3_smoke_throw"
+    category: "utility"
+    source: "player_3"
+    scene: "CS2 - Player 3"
+    description: "Player 3 selected or threw smoke throw."
+    priority: 62
+    hold_sec: 3.0
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_3"
+        region: [1260, 760, 520, 260]
+        template_path: "../assets/templates/cs2/smoke_icon.png"
+        threshold: 0.78
+      - type: "motion"
+        source: "player_3"
+        region: [1120, 560, 620, 420]
+        threshold: 24
+        min_ratio: 0.05
+
+  - name: "player_3_molotov_fire_impact"
+    category: "utility"
+    source: "player_3"
+    scene: "CS2 - Player 3"
+    description: "Orange fire-like region appears on Player 3 POV after utility impact."
+    priority: 65
+    hold_sec: 3.5
     stable_frames: 2
     rules:
-      - type: "region_brightness"
-        source: "observer"
-        region: [640, 90, 640, 110]
-        operator: "above"
-        threshold: 160
+      - type: "region_color"
+        source: "player_3"
+        region: [420, 220, 1080, 520]
+        lower_bgr: [0, 70, 150]
+        upper_bgr: [90, 210, 255]
+        min_ratio: 0.08
+
+  - name: "player_3_active_combat"
+    category: "combat"
+    source: "player_3"
+    scene: "CS2 - Player 3"
+    description: "Generic motion-heavy combat-like action on Player 3 POV."
+    priority: 40
+    hold_sec: 3.0
+    stable_frames: 3
+    rules:
+      - type: "motion"
+        source: "player_3"
+        region: [420, 220, 1080, 520]
+        threshold: 26
+        min_ratio: 0.08
+
+  - name: "player_4_critical_survival"
+    category: "survival"
+    source: "player_4"
+    scene: "CS2 - Player 4"
+    description: "Player 4 appears low health. Hold POV for clutch/survival."
+    priority: 90
+    hold_sec: 6.0
+    stable_frames: 2
+    interrupt: true
+    rules:
+      - type: "region_color"
+        source: "player_4"
+        region: [40, 930, 220, 95]
+        lower_bgr: [0, 0, 120]
+        upper_bgr: [90, 90, 255]
+        min_ratio: 0.18
+
+  - name: "player_4_sniper_scoped_action"
+    category: "sniper"
+    source: "player_4"
+    scene: "CS2 - Player 4"
+    description: "Player 4 is scoped with sniper and has center-screen action."
+    priority: 80
+    hold_sec: 5.0
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_4"
+        region: [0, 0, 1920, 1080]
+        template_path: "../assets/templates/cs2/scope_overlay.png"
+        threshold: 0.80
+      - type: "motion"
+        source: "player_4"
+        region: [760, 360, 400, 260]
+        threshold: 22
+        min_ratio: 0.04
+
+  - name: "player_4_molotov_throw"
+    category: "utility"
+    source: "player_4"
+    scene: "CS2 - Player 4"
+    description: "Player 4 selected or threw molotov throw."
+    priority: 70
+    hold_sec: 3.5
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_4"
+        region: [1260, 760, 520, 260]
+        template_path: "../assets/templates/cs2/molotov_icon.png"
+        threshold: 0.78
+      - type: "motion"
+        source: "player_4"
+        region: [1120, 560, 620, 420]
+        threshold: 24
+        min_ratio: 0.05
+
+  - name: "player_4_grenade_throw"
+    category: "utility"
+    source: "player_4"
+    scene: "CS2 - Player 4"
+    description: "Player 4 selected or threw grenade throw."
+    priority: 68
+    hold_sec: 3.5
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_4"
+        region: [1260, 760, 520, 260]
+        template_path: "../assets/templates/cs2/grenade_icon.png"
+        threshold: 0.78
+      - type: "motion"
+        source: "player_4"
+        region: [1120, 560, 620, 420]
+        threshold: 24
+        min_ratio: 0.05
+
+  - name: "player_4_flashbang_throw"
+    category: "utility"
+    source: "player_4"
+    scene: "CS2 - Player 4"
+    description: "Player 4 selected or threw flashbang throw."
+    priority: 66
+    hold_sec: 3.0
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_4"
+        region: [1260, 760, 520, 260]
+        template_path: "../assets/templates/cs2/flashbang_icon.png"
+        threshold: 0.78
+      - type: "motion"
+        source: "player_4"
+        region: [1120, 560, 620, 420]
+        threshold: 24
+        min_ratio: 0.05
+
+  - name: "player_4_smoke_throw"
+    category: "utility"
+    source: "player_4"
+    scene: "CS2 - Player 4"
+    description: "Player 4 selected or threw smoke throw."
+    priority: 62
+    hold_sec: 3.0
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_4"
+        region: [1260, 760, 520, 260]
+        template_path: "../assets/templates/cs2/smoke_icon.png"
+        threshold: 0.78
+      - type: "motion"
+        source: "player_4"
+        region: [1120, 560, 620, 420]
+        threshold: 24
+        min_ratio: 0.05
+
+  - name: "player_4_molotov_fire_impact"
+    category: "utility"
+    source: "player_4"
+    scene: "CS2 - Player 4"
+    description: "Orange fire-like region appears on Player 4 POV after utility impact."
+    priority: 65
+    hold_sec: 3.5
+    stable_frames: 2
+    rules:
+      - type: "region_color"
+        source: "player_4"
+        region: [420, 220, 1080, 520]
+        lower_bgr: [0, 70, 150]
+        upper_bgr: [90, 210, 255]
+        min_ratio: 0.08
+
+  - name: "player_4_active_combat"
+    category: "combat"
+    source: "player_4"
+    scene: "CS2 - Player 4"
+    description: "Generic motion-heavy combat-like action on Player 4 POV."
+    priority: 40
+    hold_sec: 3.0
+    stable_frames: 3
+    rules:
+      - type: "motion"
+        source: "player_4"
+        region: [420, 220, 1080, 520]
+        threshold: 26
+        min_ratio: 0.08
+
+  - name: "player_5_critical_survival"
+    category: "survival"
+    source: "player_5"
+    scene: "CS2 - Player 5"
+    description: "Player 5 appears low health. Hold POV for clutch/survival."
+    priority: 90
+    hold_sec: 6.0
+    stable_frames: 2
+    interrupt: true
+    rules:
+      - type: "region_color"
+        source: "player_5"
+        region: [40, 930, 220, 95]
+        lower_bgr: [0, 0, 120]
+        upper_bgr: [90, 90, 255]
+        min_ratio: 0.18
+
+  - name: "player_5_sniper_scoped_action"
+    category: "sniper"
+    source: "player_5"
+    scene: "CS2 - Player 5"
+    description: "Player 5 is scoped with sniper and has center-screen action."
+    priority: 80
+    hold_sec: 5.0
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_5"
+        region: [0, 0, 1920, 1080]
+        template_path: "../assets/templates/cs2/scope_overlay.png"
+        threshold: 0.80
+      - type: "motion"
+        source: "player_5"
+        region: [760, 360, 400, 260]
+        threshold: 22
+        min_ratio: 0.04
+
+  - name: "player_5_molotov_throw"
+    category: "utility"
+    source: "player_5"
+    scene: "CS2 - Player 5"
+    description: "Player 5 selected or threw molotov throw."
+    priority: 70
+    hold_sec: 3.5
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_5"
+        region: [1260, 760, 520, 260]
+        template_path: "../assets/templates/cs2/molotov_icon.png"
+        threshold: 0.78
+      - type: "motion"
+        source: "player_5"
+        region: [1120, 560, 620, 420]
+        threshold: 24
+        min_ratio: 0.05
+
+  - name: "player_5_grenade_throw"
+    category: "utility"
+    source: "player_5"
+    scene: "CS2 - Player 5"
+    description: "Player 5 selected or threw grenade throw."
+    priority: 68
+    hold_sec: 3.5
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_5"
+        region: [1260, 760, 520, 260]
+        template_path: "../assets/templates/cs2/grenade_icon.png"
+        threshold: 0.78
+      - type: "motion"
+        source: "player_5"
+        region: [1120, 560, 620, 420]
+        threshold: 24
+        min_ratio: 0.05
+
+  - name: "player_5_flashbang_throw"
+    category: "utility"
+    source: "player_5"
+    scene: "CS2 - Player 5"
+    description: "Player 5 selected or threw flashbang throw."
+    priority: 66
+    hold_sec: 3.0
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_5"
+        region: [1260, 760, 520, 260]
+        template_path: "../assets/templates/cs2/flashbang_icon.png"
+        threshold: 0.78
+      - type: "motion"
+        source: "player_5"
+        region: [1120, 560, 620, 420]
+        threshold: 24
+        min_ratio: 0.05
+
+  - name: "player_5_smoke_throw"
+    category: "utility"
+    source: "player_5"
+    scene: "CS2 - Player 5"
+    description: "Player 5 selected or threw smoke throw."
+    priority: 62
+    hold_sec: 3.0
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_5"
+        region: [1260, 760, 520, 260]
+        template_path: "../assets/templates/cs2/smoke_icon.png"
+        threshold: 0.78
+      - type: "motion"
+        source: "player_5"
+        region: [1120, 560, 620, 420]
+        threshold: 24
+        min_ratio: 0.05
+
+  - name: "player_5_molotov_fire_impact"
+    category: "utility"
+    source: "player_5"
+    scene: "CS2 - Player 5"
+    description: "Orange fire-like region appears on Player 5 POV after utility impact."
+    priority: 65
+    hold_sec: 3.5
+    stable_frames: 2
+    rules:
+      - type: "region_color"
+        source: "player_5"
+        region: [420, 220, 1080, 520]
+        lower_bgr: [0, 70, 150]
+        upper_bgr: [90, 210, 255]
+        min_ratio: 0.08
+
+  - name: "player_5_active_combat"
+    category: "combat"
+    source: "player_5"
+    scene: "CS2 - Player 5"
+    description: "Generic motion-heavy combat-like action on Player 5 POV."
+    priority: 40
+    hold_sec: 3.0
+    stable_frames: 3
+    rules:
+      - type: "motion"
+        source: "player_5"
+        region: [420, 220, 1080, 520]
+        threshold: 26
+        min_ratio: 0.08
+
+  - name: "player_6_critical_survival"
+    category: "survival"
+    source: "player_6"
+    scene: "CS2 - Player 6"
+    description: "Player 6 appears low health. Hold POV for clutch/survival."
+    priority: 90
+    hold_sec: 6.0
+    stable_frames: 2
+    interrupt: true
+    rules:
+      - type: "region_color"
+        source: "player_6"
+        region: [40, 930, 220, 95]
+        lower_bgr: [0, 0, 120]
+        upper_bgr: [90, 90, 255]
+        min_ratio: 0.18
+
+  - name: "player_6_sniper_scoped_action"
+    category: "sniper"
+    source: "player_6"
+    scene: "CS2 - Player 6"
+    description: "Player 6 is scoped with sniper and has center-screen action."
+    priority: 80
+    hold_sec: 5.0
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_6"
+        region: [0, 0, 1920, 1080]
+        template_path: "../assets/templates/cs2/scope_overlay.png"
+        threshold: 0.80
+      - type: "motion"
+        source: "player_6"
+        region: [760, 360, 400, 260]
+        threshold: 22
+        min_ratio: 0.04
+
+  - name: "player_6_molotov_throw"
+    category: "utility"
+    source: "player_6"
+    scene: "CS2 - Player 6"
+    description: "Player 6 selected or threw molotov throw."
+    priority: 70
+    hold_sec: 3.5
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_6"
+        region: [1260, 760, 520, 260]
+        template_path: "../assets/templates/cs2/molotov_icon.png"
+        threshold: 0.78
+      - type: "motion"
+        source: "player_6"
+        region: [1120, 560, 620, 420]
+        threshold: 24
+        min_ratio: 0.05
+
+  - name: "player_6_grenade_throw"
+    category: "utility"
+    source: "player_6"
+    scene: "CS2 - Player 6"
+    description: "Player 6 selected or threw grenade throw."
+    priority: 68
+    hold_sec: 3.5
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_6"
+        region: [1260, 760, 520, 260]
+        template_path: "../assets/templates/cs2/grenade_icon.png"
+        threshold: 0.78
+      - type: "motion"
+        source: "player_6"
+        region: [1120, 560, 620, 420]
+        threshold: 24
+        min_ratio: 0.05
+
+  - name: "player_6_flashbang_throw"
+    category: "utility"
+    source: "player_6"
+    scene: "CS2 - Player 6"
+    description: "Player 6 selected or threw flashbang throw."
+    priority: 66
+    hold_sec: 3.0
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_6"
+        region: [1260, 760, 520, 260]
+        template_path: "../assets/templates/cs2/flashbang_icon.png"
+        threshold: 0.78
+      - type: "motion"
+        source: "player_6"
+        region: [1120, 560, 620, 420]
+        threshold: 24
+        min_ratio: 0.05
+
+  - name: "player_6_smoke_throw"
+    category: "utility"
+    source: "player_6"
+    scene: "CS2 - Player 6"
+    description: "Player 6 selected or threw smoke throw."
+    priority: 62
+    hold_sec: 3.0
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_6"
+        region: [1260, 760, 520, 260]
+        template_path: "../assets/templates/cs2/smoke_icon.png"
+        threshold: 0.78
+      - type: "motion"
+        source: "player_6"
+        region: [1120, 560, 620, 420]
+        threshold: 24
+        min_ratio: 0.05
+
+  - name: "player_6_molotov_fire_impact"
+    category: "utility"
+    source: "player_6"
+    scene: "CS2 - Player 6"
+    description: "Orange fire-like region appears on Player 6 POV after utility impact."
+    priority: 65
+    hold_sec: 3.5
+    stable_frames: 2
+    rules:
+      - type: "region_color"
+        source: "player_6"
+        region: [420, 220, 1080, 520]
+        lower_bgr: [0, 70, 150]
+        upper_bgr: [90, 210, 255]
+        min_ratio: 0.08
+
+  - name: "player_6_active_combat"
+    category: "combat"
+    source: "player_6"
+    scene: "CS2 - Player 6"
+    description: "Generic motion-heavy combat-like action on Player 6 POV."
+    priority: 40
+    hold_sec: 3.0
+    stable_frames: 3
+    rules:
+      - type: "motion"
+        source: "player_6"
+        region: [420, 220, 1080, 520]
+        threshold: 26
+        min_ratio: 0.08
+
+  - name: "player_7_critical_survival"
+    category: "survival"
+    source: "player_7"
+    scene: "CS2 - Player 7"
+    description: "Player 7 appears low health. Hold POV for clutch/survival."
+    priority: 90
+    hold_sec: 6.0
+    stable_frames: 2
+    interrupt: true
+    rules:
+      - type: "region_color"
+        source: "player_7"
+        region: [40, 930, 220, 95]
+        lower_bgr: [0, 0, 120]
+        upper_bgr: [90, 90, 255]
+        min_ratio: 0.18
+
+  - name: "player_7_sniper_scoped_action"
+    category: "sniper"
+    source: "player_7"
+    scene: "CS2 - Player 7"
+    description: "Player 7 is scoped with sniper and has center-screen action."
+    priority: 80
+    hold_sec: 5.0
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_7"
+        region: [0, 0, 1920, 1080]
+        template_path: "../assets/templates/cs2/scope_overlay.png"
+        threshold: 0.80
+      - type: "motion"
+        source: "player_7"
+        region: [760, 360, 400, 260]
+        threshold: 22
+        min_ratio: 0.04
+
+  - name: "player_7_molotov_throw"
+    category: "utility"
+    source: "player_7"
+    scene: "CS2 - Player 7"
+    description: "Player 7 selected or threw molotov throw."
+    priority: 70
+    hold_sec: 3.5
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_7"
+        region: [1260, 760, 520, 260]
+        template_path: "../assets/templates/cs2/molotov_icon.png"
+        threshold: 0.78
+      - type: "motion"
+        source: "player_7"
+        region: [1120, 560, 620, 420]
+        threshold: 24
+        min_ratio: 0.05
+
+  - name: "player_7_grenade_throw"
+    category: "utility"
+    source: "player_7"
+    scene: "CS2 - Player 7"
+    description: "Player 7 selected or threw grenade throw."
+    priority: 68
+    hold_sec: 3.5
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_7"
+        region: [1260, 760, 520, 260]
+        template_path: "../assets/templates/cs2/grenade_icon.png"
+        threshold: 0.78
+      - type: "motion"
+        source: "player_7"
+        region: [1120, 560, 620, 420]
+        threshold: 24
+        min_ratio: 0.05
+
+  - name: "player_7_flashbang_throw"
+    category: "utility"
+    source: "player_7"
+    scene: "CS2 - Player 7"
+    description: "Player 7 selected or threw flashbang throw."
+    priority: 66
+    hold_sec: 3.0
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_7"
+        region: [1260, 760, 520, 260]
+        template_path: "../assets/templates/cs2/flashbang_icon.png"
+        threshold: 0.78
+      - type: "motion"
+        source: "player_7"
+        region: [1120, 560, 620, 420]
+        threshold: 24
+        min_ratio: 0.05
+
+  - name: "player_7_smoke_throw"
+    category: "utility"
+    source: "player_7"
+    scene: "CS2 - Player 7"
+    description: "Player 7 selected or threw smoke throw."
+    priority: 62
+    hold_sec: 3.0
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_7"
+        region: [1260, 760, 520, 260]
+        template_path: "../assets/templates/cs2/smoke_icon.png"
+        threshold: 0.78
+      - type: "motion"
+        source: "player_7"
+        region: [1120, 560, 620, 420]
+        threshold: 24
+        min_ratio: 0.05
+
+  - name: "player_7_molotov_fire_impact"
+    category: "utility"
+    source: "player_7"
+    scene: "CS2 - Player 7"
+    description: "Orange fire-like region appears on Player 7 POV after utility impact."
+    priority: 65
+    hold_sec: 3.5
+    stable_frames: 2
+    rules:
+      - type: "region_color"
+        source: "player_7"
+        region: [420, 220, 1080, 520]
+        lower_bgr: [0, 70, 150]
+        upper_bgr: [90, 210, 255]
+        min_ratio: 0.08
+
+  - name: "player_7_active_combat"
+    category: "combat"
+    source: "player_7"
+    scene: "CS2 - Player 7"
+    description: "Generic motion-heavy combat-like action on Player 7 POV."
+    priority: 40
+    hold_sec: 3.0
+    stable_frames: 3
+    rules:
+      - type: "motion"
+        source: "player_7"
+        region: [420, 220, 1080, 520]
+        threshold: 26
+        min_ratio: 0.08
+
+  - name: "player_8_critical_survival"
+    category: "survival"
+    source: "player_8"
+    scene: "CS2 - Player 8"
+    description: "Player 8 appears low health. Hold POV for clutch/survival."
+    priority: 90
+    hold_sec: 6.0
+    stable_frames: 2
+    interrupt: true
+    rules:
+      - type: "region_color"
+        source: "player_8"
+        region: [40, 930, 220, 95]
+        lower_bgr: [0, 0, 120]
+        upper_bgr: [90, 90, 255]
+        min_ratio: 0.18
+
+  - name: "player_8_sniper_scoped_action"
+    category: "sniper"
+    source: "player_8"
+    scene: "CS2 - Player 8"
+    description: "Player 8 is scoped with sniper and has center-screen action."
+    priority: 80
+    hold_sec: 5.0
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_8"
+        region: [0, 0, 1920, 1080]
+        template_path: "../assets/templates/cs2/scope_overlay.png"
+        threshold: 0.80
+      - type: "motion"
+        source: "player_8"
+        region: [760, 360, 400, 260]
+        threshold: 22
+        min_ratio: 0.04
+
+  - name: "player_8_molotov_throw"
+    category: "utility"
+    source: "player_8"
+    scene: "CS2 - Player 8"
+    description: "Player 8 selected or threw molotov throw."
+    priority: 70
+    hold_sec: 3.5
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_8"
+        region: [1260, 760, 520, 260]
+        template_path: "../assets/templates/cs2/molotov_icon.png"
+        threshold: 0.78
+      - type: "motion"
+        source: "player_8"
+        region: [1120, 560, 620, 420]
+        threshold: 24
+        min_ratio: 0.05
+
+  - name: "player_8_grenade_throw"
+    category: "utility"
+    source: "player_8"
+    scene: "CS2 - Player 8"
+    description: "Player 8 selected or threw grenade throw."
+    priority: 68
+    hold_sec: 3.5
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_8"
+        region: [1260, 760, 520, 260]
+        template_path: "../assets/templates/cs2/grenade_icon.png"
+        threshold: 0.78
+      - type: "motion"
+        source: "player_8"
+        region: [1120, 560, 620, 420]
+        threshold: 24
+        min_ratio: 0.05
+
+  - name: "player_8_flashbang_throw"
+    category: "utility"
+    source: "player_8"
+    scene: "CS2 - Player 8"
+    description: "Player 8 selected or threw flashbang throw."
+    priority: 66
+    hold_sec: 3.0
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_8"
+        region: [1260, 760, 520, 260]
+        template_path: "../assets/templates/cs2/flashbang_icon.png"
+        threshold: 0.78
+      - type: "motion"
+        source: "player_8"
+        region: [1120, 560, 620, 420]
+        threshold: 24
+        min_ratio: 0.05
+
+  - name: "player_8_smoke_throw"
+    category: "utility"
+    source: "player_8"
+    scene: "CS2 - Player 8"
+    description: "Player 8 selected or threw smoke throw."
+    priority: 62
+    hold_sec: 3.0
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_8"
+        region: [1260, 760, 520, 260]
+        template_path: "../assets/templates/cs2/smoke_icon.png"
+        threshold: 0.78
+      - type: "motion"
+        source: "player_8"
+        region: [1120, 560, 620, 420]
+        threshold: 24
+        min_ratio: 0.05
+
+  - name: "player_8_molotov_fire_impact"
+    category: "utility"
+    source: "player_8"
+    scene: "CS2 - Player 8"
+    description: "Orange fire-like region appears on Player 8 POV after utility impact."
+    priority: 65
+    hold_sec: 3.5
+    stable_frames: 2
+    rules:
+      - type: "region_color"
+        source: "player_8"
+        region: [420, 220, 1080, 520]
+        lower_bgr: [0, 70, 150]
+        upper_bgr: [90, 210, 255]
+        min_ratio: 0.08
+
+  - name: "player_8_active_combat"
+    category: "combat"
+    source: "player_8"
+    scene: "CS2 - Player 8"
+    description: "Generic motion-heavy combat-like action on Player 8 POV."
+    priority: 40
+    hold_sec: 3.0
+    stable_frames: 3
+    rules:
+      - type: "motion"
+        source: "player_8"
+        region: [420, 220, 1080, 520]
+        threshold: 26
+        min_ratio: 0.08
+
+  - name: "player_9_critical_survival"
+    category: "survival"
+    source: "player_9"
+    scene: "CS2 - Player 9"
+    description: "Player 9 appears low health. Hold POV for clutch/survival."
+    priority: 90
+    hold_sec: 6.0
+    stable_frames: 2
+    interrupt: true
+    rules:
+      - type: "region_color"
+        source: "player_9"
+        region: [40, 930, 220, 95]
+        lower_bgr: [0, 0, 120]
+        upper_bgr: [90, 90, 255]
+        min_ratio: 0.18
+
+  - name: "player_9_sniper_scoped_action"
+    category: "sniper"
+    source: "player_9"
+    scene: "CS2 - Player 9"
+    description: "Player 9 is scoped with sniper and has center-screen action."
+    priority: 80
+    hold_sec: 5.0
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_9"
+        region: [0, 0, 1920, 1080]
+        template_path: "../assets/templates/cs2/scope_overlay.png"
+        threshold: 0.80
+      - type: "motion"
+        source: "player_9"
+        region: [760, 360, 400, 260]
+        threshold: 22
+        min_ratio: 0.04
+
+  - name: "player_9_molotov_throw"
+    category: "utility"
+    source: "player_9"
+    scene: "CS2 - Player 9"
+    description: "Player 9 selected or threw molotov throw."
+    priority: 70
+    hold_sec: 3.5
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_9"
+        region: [1260, 760, 520, 260]
+        template_path: "../assets/templates/cs2/molotov_icon.png"
+        threshold: 0.78
+      - type: "motion"
+        source: "player_9"
+        region: [1120, 560, 620, 420]
+        threshold: 24
+        min_ratio: 0.05
+
+  - name: "player_9_grenade_throw"
+    category: "utility"
+    source: "player_9"
+    scene: "CS2 - Player 9"
+    description: "Player 9 selected or threw grenade throw."
+    priority: 68
+    hold_sec: 3.5
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_9"
+        region: [1260, 760, 520, 260]
+        template_path: "../assets/templates/cs2/grenade_icon.png"
+        threshold: 0.78
+      - type: "motion"
+        source: "player_9"
+        region: [1120, 560, 620, 420]
+        threshold: 24
+        min_ratio: 0.05
+
+  - name: "player_9_flashbang_throw"
+    category: "utility"
+    source: "player_9"
+    scene: "CS2 - Player 9"
+    description: "Player 9 selected or threw flashbang throw."
+    priority: 66
+    hold_sec: 3.0
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_9"
+        region: [1260, 760, 520, 260]
+        template_path: "../assets/templates/cs2/flashbang_icon.png"
+        threshold: 0.78
+      - type: "motion"
+        source: "player_9"
+        region: [1120, 560, 620, 420]
+        threshold: 24
+        min_ratio: 0.05
+
+  - name: "player_9_smoke_throw"
+    category: "utility"
+    source: "player_9"
+    scene: "CS2 - Player 9"
+    description: "Player 9 selected or threw smoke throw."
+    priority: 62
+    hold_sec: 3.0
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_9"
+        region: [1260, 760, 520, 260]
+        template_path: "../assets/templates/cs2/smoke_icon.png"
+        threshold: 0.78
+      - type: "motion"
+        source: "player_9"
+        region: [1120, 560, 620, 420]
+        threshold: 24
+        min_ratio: 0.05
+
+  - name: "player_9_molotov_fire_impact"
+    category: "utility"
+    source: "player_9"
+    scene: "CS2 - Player 9"
+    description: "Orange fire-like region appears on Player 9 POV after utility impact."
+    priority: 65
+    hold_sec: 3.5
+    stable_frames: 2
+    rules:
+      - type: "region_color"
+        source: "player_9"
+        region: [420, 220, 1080, 520]
+        lower_bgr: [0, 70, 150]
+        upper_bgr: [90, 210, 255]
+        min_ratio: 0.08
+
+  - name: "player_9_active_combat"
+    category: "combat"
+    source: "player_9"
+    scene: "CS2 - Player 9"
+    description: "Generic motion-heavy combat-like action on Player 9 POV."
+    priority: 40
+    hold_sec: 3.0
+    stable_frames: 3
+    rules:
+      - type: "motion"
+        source: "player_9"
+        region: [420, 220, 1080, 520]
+        threshold: 26
+        min_ratio: 0.08
+
+  - name: "player_10_critical_survival"
+    category: "survival"
+    source: "player_10"
+    scene: "CS2 - Player 10"
+    description: "Player 10 appears low health. Hold POV for clutch/survival."
+    priority: 90
+    hold_sec: 6.0
+    stable_frames: 2
+    interrupt: true
+    rules:
+      - type: "region_color"
+        source: "player_10"
+        region: [40, 930, 220, 95]
+        lower_bgr: [0, 0, 120]
+        upper_bgr: [90, 90, 255]
+        min_ratio: 0.18
+
+  - name: "player_10_sniper_scoped_action"
+    category: "sniper"
+    source: "player_10"
+    scene: "CS2 - Player 10"
+    description: "Player 10 is scoped with sniper and has center-screen action."
+    priority: 80
+    hold_sec: 5.0
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_10"
+        region: [0, 0, 1920, 1080]
+        template_path: "../assets/templates/cs2/scope_overlay.png"
+        threshold: 0.80
+      - type: "motion"
+        source: "player_10"
+        region: [760, 360, 400, 260]
+        threshold: 22
+        min_ratio: 0.04
+
+  - name: "player_10_molotov_throw"
+    category: "utility"
+    source: "player_10"
+    scene: "CS2 - Player 10"
+    description: "Player 10 selected or threw molotov throw."
+    priority: 70
+    hold_sec: 3.5
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_10"
+        region: [1260, 760, 520, 260]
+        template_path: "../assets/templates/cs2/molotov_icon.png"
+        threshold: 0.78
+      - type: "motion"
+        source: "player_10"
+        region: [1120, 560, 620, 420]
+        threshold: 24
+        min_ratio: 0.05
+
+  - name: "player_10_grenade_throw"
+    category: "utility"
+    source: "player_10"
+    scene: "CS2 - Player 10"
+    description: "Player 10 selected or threw grenade throw."
+    priority: 68
+    hold_sec: 3.5
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_10"
+        region: [1260, 760, 520, 260]
+        template_path: "../assets/templates/cs2/grenade_icon.png"
+        threshold: 0.78
+      - type: "motion"
+        source: "player_10"
+        region: [1120, 560, 620, 420]
+        threshold: 24
+        min_ratio: 0.05
+
+  - name: "player_10_flashbang_throw"
+    category: "utility"
+    source: "player_10"
+    scene: "CS2 - Player 10"
+    description: "Player 10 selected or threw flashbang throw."
+    priority: 66
+    hold_sec: 3.0
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_10"
+        region: [1260, 760, 520, 260]
+        template_path: "../assets/templates/cs2/flashbang_icon.png"
+        threshold: 0.78
+      - type: "motion"
+        source: "player_10"
+        region: [1120, 560, 620, 420]
+        threshold: 24
+        min_ratio: 0.05
+
+  - name: "player_10_smoke_throw"
+    category: "utility"
+    source: "player_10"
+    scene: "CS2 - Player 10"
+    description: "Player 10 selected or threw smoke throw."
+    priority: 62
+    hold_sec: 3.0
+    stable_frames: 1
+    rule_mode: "all"
+    rules:
+      - type: "template"
+        source: "player_10"
+        region: [1260, 760, 520, 260]
+        template_path: "../assets/templates/cs2/smoke_icon.png"
+        threshold: 0.78
+      - type: "motion"
+        source: "player_10"
+        region: [1120, 560, 620, 420]
+        threshold: 24
+        min_ratio: 0.05
+
+  - name: "player_10_molotov_fire_impact"
+    category: "utility"
+    source: "player_10"
+    scene: "CS2 - Player 10"
+    description: "Orange fire-like region appears on Player 10 POV after utility impact."
+    priority: 65
+    hold_sec: 3.5
+    stable_frames: 2
+    rules:
+      - type: "region_color"
+        source: "player_10"
+        region: [420, 220, 1080, 520]
+        lower_bgr: [0, 70, 150]
+        upper_bgr: [90, 210, 255]
+        min_ratio: 0.08
+
+  - name: "player_10_active_combat"
+    category: "combat"
+    source: "player_10"
+    scene: "CS2 - Player 10"
+    description: "Generic motion-heavy combat-like action on Player 10 POV."
+    priority: 40
+    hold_sec: 3.0
+    stable_frames: 3
+    rules:
+      - type: "motion"
+        source: "player_10"
+        region: [420, 220, 1080, 520]
+        threshold: 26
+        min_ratio: 0.08
+
