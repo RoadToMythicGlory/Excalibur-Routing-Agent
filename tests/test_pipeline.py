@@ -9,17 +9,17 @@ from pathlib import Path
 
 import numpy as np
 
-from obs_auto_director.capture.manager import Frame
-from obs_auto_director.config import (
+from excalibur.capture.manager import Frame
+from excalibur.config import (
     DirectorConfig,
     EventConfig,
     GameProfile,
     ObsConfig,
     RegionColorRuleConfig,
 )
-from obs_auto_director.detection.rules import RuleEvaluator
-from obs_auto_director.director.engine import DirectorEngine
-from obs_auto_director.obs.client import ObsSceneRouter
+from excalibur.detection.rules import RuleEvaluator
+from excalibur.director.engine import DirectorEngine
+from excalibur.obs.client import ObsSceneRouter
 
 
 class FakeReqClient:

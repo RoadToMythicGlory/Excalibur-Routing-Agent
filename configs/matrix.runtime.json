@@ -3,7 +3,7 @@
   "program_publish_url": null,
   "input_count": 11,
   "output_count": 11,
-  "agent_enabled": false,
+  "agent_enabled": true,
   "inputs": {
     "input_01": {
       "srt_mode": "off",
@@ -40,12 +40,26 @@
       "obs_scene": "PGM - Player 03",
       "srt_mode": "off",
       "srt_host": null,
-      "srt_port": null,
+      "srt_port": 20001,
       "srt_latency": 200,
       "source_mode": "file",
       "file_path": "C:\\Users\\idanm\\Downloads\\counter-strike-2-best-gameplay-4k-no-commentary-ytmp4.savetube.vip (1).mp4",
       "source_url": null,
       "loop": true
+    },
+    "input_04": {
+      "player_name": null,
+      "team": null,
+      "role": null,
+      "obs_scene": "PGM - Player 04",
+      "source_mode": "srt_listener",
+      "srt_mode": "listener",
+      "srt_host": null,
+      "srt_port": 20001,
+      "srt_latency": 200,
+      "file_path": null,
+      "source_url": null,
+      "loop": false
     }
   },
   "virtualcam": {

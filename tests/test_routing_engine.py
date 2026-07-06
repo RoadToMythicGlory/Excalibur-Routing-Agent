@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import pytest
 
-from obs_auto_director.matrix.buses import MatrixBuses
-from obs_auto_director.matrix.clock import set_now_override
-from obs_auto_director.matrix.domain import (
+from excalibur.matrix.buses import MatrixBuses
+from excalibur.matrix.clock import set_now_override
+from excalibur.matrix.domain import (
     BusName,
     ControlAction,
     ControlCommand,
@@ -12,8 +12,8 @@ from obs_auto_director.matrix.domain import (
     RoutingIntent,
     SlotState,
 )
-from obs_auto_director.matrix.matrix_core import MatrixCore
-from obs_auto_director.matrix.routing_engine import RoutingEngine
+from excalibur.matrix.matrix_core import MatrixCore
+from excalibur.matrix.routing_engine import RoutingEngine
 
 
 @pytest.fixture

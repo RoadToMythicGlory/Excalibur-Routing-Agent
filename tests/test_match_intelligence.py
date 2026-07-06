@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import pytest
 
-from obs_auto_director.matrix.buses import MatrixBuses
-from obs_auto_director.matrix.clock import set_now_override
-from obs_auto_director.matrix.gsi.receiver import GsiReceiver
-from obs_auto_director.matrix.gsi.simulator import ROSTER, clutch_round_sequence
-from obs_auto_director.matrix.intelligence.engine import MatchIntelligenceEngine
+from excalibur.matrix.buses import MatrixBuses
+from excalibur.matrix.clock import set_now_override
+from excalibur.matrix.gsi.receiver import GsiReceiver
+from excalibur.matrix.gsi.simulator import ROSTER, clutch_round_sequence
+from excalibur.matrix.intelligence.engine import MatchIntelligenceEngine
 
 
 @pytest.fixture(autouse=True)

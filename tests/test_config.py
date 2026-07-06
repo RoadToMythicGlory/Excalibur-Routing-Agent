@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from obs_auto_director.config import load_app_config, load_game_profile
+from excalibur.config import load_app_config, load_game_profile
 
 
 def test_example_configs_load() -> None:

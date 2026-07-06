@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from obs_auto_director.config import (
+from excalibur.config import (
     AppConfig,
     DirectorConfig,
     EventConfig,
@@ -9,8 +9,8 @@ from obs_auto_director.config import (
     ObsConfig,
     SourceConfig,
 )
-from obs_auto_director.main import collect_expected_scenes
-from obs_auto_director.obs.client import ObsSceneRouter
+from excalibur.main import collect_expected_scenes
+from excalibur.obs.client import ObsSceneRouter
 
 
 class FakeResponse:
@@ -79,7 +79,7 @@ def test_collect_expected_scenes_includes_default_and_events() -> None:
 
 
 def test_example_configs_expected_scenes_match_profile() -> None:
-    from obs_auto_director.config import load_app_config, load_game_profile
+    from excalibur.config import load_app_config, load_game_profile
 
     root = Path(__file__).resolve().parents[1]
     app = load_app_config(root / "configs" / "app.example.yaml")

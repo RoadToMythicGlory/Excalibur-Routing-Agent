@@ -188,7 +188,7 @@ export function App() {
   if (!config || !caps || !identity) {
     return (
       <div className="app loading">
-        <div className="brand">Galahad Encoder</div>
+        <img src="/logo.png" alt="Galahad Client Agent" className="brand-logo" />
         <p>{message ?? "Detecting capabilities…"}</p>
       </div>
     );
@@ -213,7 +213,7 @@ export function App() {
   return (
     <div className="app">
       <header className="app-bar">
-        <div className="brand">Galahad Encoder</div>
+        <img src="/logo.png" alt="Galahad Client Agent" className="brand-logo" />
         <div className="app-bar-right">
           <Pill tone={STATE_TONE[status?.state ?? "idle"] ?? "muted"}>
             {(status?.state ?? "idle").toUpperCase()}

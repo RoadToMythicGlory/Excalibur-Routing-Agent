@@ -3,8 +3,8 @@ from pathlib import Path
 
 import numpy as np
 
-from obs_auto_director.capture.manager import Frame
-from obs_auto_director.config import (
+from excalibur.capture.manager import Frame
+from excalibur.config import (
     AliveCountRuleConfig,
     CutRuleConfig,
     DirectorConfig,
@@ -15,8 +15,8 @@ from obs_auto_director.config import (
     SourceProfile,
     load_game_profile,
 )
-from obs_auto_director.detection.rules import Detection, RuleEvaluator
-from obs_auto_director.director.engine import DirectorEngine
+from excalibur.detection.rules import Detection, RuleEvaluator
+from excalibur.director.engine import DirectorEngine
 
 
 ROOT = Path(__file__).resolve().parents[1]

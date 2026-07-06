@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from obs_auto_director.matrix.clock import advance_now_override, set_now_override
-from obs_auto_director.matrix.service import MatrixService
+from excalibur.matrix.clock import advance_now_override, set_now_override
+from excalibur.matrix.service import MatrixService
 
 
 @pytest.fixture(autouse=True)
@@ -57,7 +57,7 @@ def test_disabled_agent_neither_rotates_nor_reacts(tmp_path):
     assert service.matrix.current_input_for(service.program_output) is None
 
     # Story-level intelligence is ignored while the agent is off.
-    from obs_auto_director.matrix.domain import MatchIntelligenceEvent
+    from excalibur.matrix.domain import MatchIntelligenceEvent
 
     event = MatchIntelligenceEvent(
         type="potential_clutch",

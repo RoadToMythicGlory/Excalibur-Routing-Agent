@@ -70,6 +70,17 @@ body {
   color: transparent;
 }
 
+.brand-logo {
+  height: 40px;
+  width: auto;
+  display: block;
+}
+
+.app.loading .brand-logo {
+  height: 96px;
+  margin-bottom: 12px;
+}
+
 .banner {
   margin: 12px 22px 0;
   padding: 10px 14px;

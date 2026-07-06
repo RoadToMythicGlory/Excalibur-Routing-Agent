@@ -2,16 +2,16 @@ from __future__ import annotations
 
 import pytest
 
-from obs_auto_director.matrix.clock import set_now_override
-from obs_auto_director.matrix.domain import ControlAction, ControlCommand
-from obs_auto_director.matrix.media.virtualcam import (
+from excalibur.matrix.clock import set_now_override
+from excalibur.matrix.domain import ControlAction, ControlCommand
+from excalibur.matrix.media.virtualcam import (
     DEFAULT_DEVICE_NAME,
     VirtualCamOutputManager,
     build_decode_command,
     build_vcam_stream_command,
     vcam_setup_commands,
 )
-from obs_auto_director.matrix.service import MatrixService
+from excalibur.matrix.service import MatrixService
 
 
 @pytest.fixture(autouse=True)

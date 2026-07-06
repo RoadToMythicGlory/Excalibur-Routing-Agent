@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import pytest
 
-from obs_auto_director.matrix.clock import set_now_override
-from obs_auto_director.matrix.media import compositor as comp_mod
-from obs_auto_director.matrix.media.compositor import (
+from excalibur.matrix.clock import set_now_override
+from excalibur.matrix.media import compositor as comp_mod
+from excalibur.matrix.media.compositor import (
     CompositorOutputManager,
     build_compositor_command,
 )
-from obs_auto_director.matrix.media.ingest import MediaInput
+from excalibur.matrix.media.ingest import MediaInput
 
 
 @pytest.fixture(autouse=True)

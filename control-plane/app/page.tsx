@@ -69,7 +69,7 @@ export default function Page() {
   return (
     <main className="app">
       <div className="header">
-        <h1>Matrix Director — Control Plane</h1>
+        <img src="/logo.png?v=2" alt="Excalibur Routing Agent" className="logo" />
         <div className="meta">
           {state?.match
             ? `${state.match.map_name ?? "map"} · ${state.match.round_id} · ${state.match.phase} · ${
@@ -82,7 +82,7 @@ export default function Page() {
       {error ? (
         <div className="panel error">
           Cannot reach matrix API: {error}. Start it with{" "}
-          <code>python -m obs_auto_director.matrix.run serve</code>.
+          <code>python -m excalibur.matrix.run serve</code>.
         </div>
       ) : null}
 

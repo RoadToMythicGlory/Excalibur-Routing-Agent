@@ -4,10 +4,10 @@ import json
 
 import pytest
 
-from obs_auto_director.matrix.clock import set_now_override
-from obs_auto_director.matrix.config_store import MatrixConfigStore
-from obs_auto_director.matrix.domain import ControlAction, ControlCommand
-from obs_auto_director.matrix.service import MatrixService, browse_filesystem
+from excalibur.matrix.clock import set_now_override
+from excalibur.matrix.config_store import MatrixConfigStore
+from excalibur.matrix.domain import ControlAction, ControlCommand
+from excalibur.matrix.service import MatrixService, browse_filesystem
 
 
 @pytest.fixture(autouse=True)

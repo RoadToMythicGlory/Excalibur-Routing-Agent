@@ -2,15 +2,15 @@ from __future__ import annotations
 
 import pytest
 
-from obs_auto_director.matrix.clock import set_now_override
-from obs_auto_director.matrix.domain import ControlAction, ControlCommand
-from obs_auto_director.matrix.media.output import (
+from excalibur.matrix.clock import set_now_override
+from excalibur.matrix.domain import ControlAction, ControlCommand
+from excalibur.matrix.media.output import (
     DEFAULT_PROGRAM_PUBLISH_URL,
     ProgramOutputManager,
     build_program_command,
     program_obs_url,
 )
-from obs_auto_director.matrix.service import MatrixService
+from excalibur.matrix.service import MatrixService
 
 
 @pytest.fixture(autouse=True)

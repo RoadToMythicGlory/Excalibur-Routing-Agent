@@ -1,6 +1,6 @@
-from obs_auto_director.config import DirectorConfig
-from obs_auto_director.detection.rules import Detection
-from obs_auto_director.director.engine import DirectorEngine
+from excalibur.config import DirectorConfig
+from excalibur.detection.rules import Detection
+from excalibur.director.engine import DirectorEngine
 
 
 def make_detection(

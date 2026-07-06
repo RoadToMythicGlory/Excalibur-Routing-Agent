@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from obs_auto_director.matrix.clock import set_now_override
-from obs_auto_director.matrix.demo import run_clutch_demo
+from excalibur.matrix.clock import set_now_override
+from excalibur.matrix.demo import run_clutch_demo
 
 
 @pytest.fixture(autouse=True)

@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import pytest
 
-from obs_auto_director.matrix.agents.director_agent import DirectorAgent
-from obs_auto_director.matrix.buses import MatrixBuses
-from obs_auto_director.matrix.clock import set_now_override
-from obs_auto_director.matrix.domain import MatchIntelligenceEvent, SlotState
-from obs_auto_director.matrix.matrix_core import MatrixCore
+from excalibur.matrix.agents.director_agent import DirectorAgent
+from excalibur.matrix.buses import MatrixBuses
+from excalibur.matrix.clock import set_now_override
+from excalibur.matrix.domain import MatchIntelligenceEvent, SlotState
+from excalibur.matrix.matrix_core import MatrixCore
 
 
 @pytest.fixture(autouse=True)

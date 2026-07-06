@@ -356,9 +356,17 @@ fn run_session(
         })
         .ok();
 
-    // We are live.
-    machine.apply(StreamEvent::Up);
+    // Surface "streaming" in the UI immediately, but do NOT yet credit this
+    // session as a healthy bring-up. `StreamEvent::Up` resets the reconnect
+    // backoff counter, so emitting it the instant FFmpeg *spawns* (rather than
+    // once it has actually stayed up) defeats the exponential backoff entirely:
+    // an SRT peer that connects then drops after ~1-2s -- e.g. the matrix
+    // listener briefly re-listening -- would reset the counter every cycle and
+    // hammer reconnects forever at ~2s intervals instead of backing off. We only
+    // count the session as healthy after it survives `STABLE_UPTIME`.
     set_state(inner, StreamState::Streaming);
+    const STABLE_UPTIME: Duration = Duration::from_secs(5);
+    let mut credited_up = false;
 
     // --- Monitor loop ---
     let started = Instant::now();
@@ -368,6 +376,11 @@ fn run_session(
         }
         if inner.restart.load(Ordering::SeqCst) {
             break SessionEnd::Restart;
+        }
+        if !credited_up && started.elapsed() >= STABLE_UPTIME {
+            // Stayed up long enough to be a real connection: reset backoff.
+            machine.apply(StreamEvent::Up);
+            credited_up = true;
         }
         if !session_alive.load(Ordering::SeqCst) {
             set_error(inner, Some("stream writer disconnected".into()));

@@ -1,4 +1,4 @@
-# OBS Auto Director
+# Excalibur
 
 Python MVP for an autonomous CS2 stream director. The service watches multiple screens at the same time, detects configured visual events, chooses the best live scene, and can switch OBS scenes through OBS WebSocket without manual approval.
 
@@ -34,13 +34,13 @@ In OBS:
 First, find the monitor indices to use in your source config:
 
 ```powershell
-obs-auto-director --list-monitors
+excalibur --list-monitors
 ```
 
 Dry-run mode logs scene decisions without changing OBS:
 
 ```powershell
-obs-auto-director --config configs/app.example.yaml --log-level DEBUG
+excalibur --config configs/app.example.yaml --log-level DEBUG
 ```
 
 When dry-run is active you get a throttled status heartbeat that shows the live
@@ -59,10 +59,10 @@ editing the file:
 
 ```powershell
 # Force live OBS control
-obs-auto-director --config configs/app.example.yaml --live
+excalibur --config configs/app.example.yaml --live
 
 # Force dry-run even if the config enables live control
-obs-auto-director --config configs/app.example.yaml --dry-run
+excalibur --config configs/app.example.yaml --dry-run
 ```
 
 In live mode the agent connects to OBS, verifies that every scene referenced by
@@ -181,10 +181,10 @@ computer-vision engine:
 
 | Concern | Module | Plugin-later note |
 | --- | --- | --- |
-| Screen capture | `src/obs_auto_director/capture/manager.py` | Could be replaced by direct OBS source frames. |
-| Event detection | `src/obs_auto_director/detection/rules.py` | Stays in Python; reused as-is. |
-| Director decisions | `src/obs_auto_director/director/engine.py` | A plugin UI can inspect/override state here. |
-| OBS control | `src/obs_auto_director/obs/client.py` | The only OBS-specific surface; swap for an in-process plugin call. |
+| Screen capture | `src/excalibur/capture/manager.py` | Could be replaced by direct OBS source frames. |
+| Event detection | `src/excalibur/detection/rules.py` | Stays in Python; reused as-is. |
+| Director decisions | `src/excalibur/director/engine.py` | A plugin UI can inspect/override state here. |
+| OBS control | `src/excalibur/obs/client.py` | The only OBS-specific surface; swap for an in-process plugin call. |
 
 ### When to actually build an OBS plugin
 
@@ -202,7 +202,7 @@ to port that logic into C++.
 ## Production Video Matrix
 
 The MVP above watches monitor captures. The production architecture in
-`src/obs_auto_director/matrix/` replaces that with a bus-driven software video
+`src/excalibur/matrix/` replaces that with a bus-driven software video
 matrix where agents observe **inputs** (not OBS Program) and a single Routing
 Engine is the only authority that applies routes. See
 `docs/ARCHITECTURE_DECISIONS.md` for the concrete technology choices and
@@ -242,13 +242,13 @@ Automation rules --------------------------------------------------> Rule Bus
 Run the simulated clutch round end-to-end (dry-run OBS):
 
 ```powershell
-obs-matrix simulate
+excalibur-matrix simulate
 ```
 
 Run the control API for the Next.js control plane (CS2 GSI sink at `POST /gsi`):
 
 ```powershell
-obs-matrix serve --port 8800
+excalibur-matrix serve --port 8800
 ```
 
 Then start the UI:

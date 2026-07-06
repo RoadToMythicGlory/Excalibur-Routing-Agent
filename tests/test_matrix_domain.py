@@ -2,15 +2,15 @@ from __future__ import annotations
 
 import pytest
 
-from obs_auto_director.matrix.clock import set_now_override
-from obs_auto_director.matrix.domain import (
+from excalibur.matrix.clock import set_now_override
+from excalibur.matrix.domain import (
     BusName,
     RoutingIntent,
     SlotState,
     input_slot_id,
     output_slot_id,
 )
-from obs_auto_director.matrix.matrix_core import MatrixCore
+from excalibur.matrix.matrix_core import MatrixCore
 
 
 @pytest.fixture(autouse=True)

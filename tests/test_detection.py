@@ -2,14 +2,14 @@ from pathlib import Path
 
 import numpy as np
 
-from obs_auto_director.capture.manager import Frame
-from obs_auto_director.config import (
+from excalibur.capture.manager import Frame
+from excalibur.config import (
     EventConfig,
     GameProfile,
     RegionBrightnessRuleConfig,
     RegionColorRuleConfig,
 )
-from obs_auto_director.detection.rules import RuleEvaluator
+from excalibur.detection.rules import RuleEvaluator
 
 
 def test_region_color_rule_detects_low_health_red_hud() -> None:

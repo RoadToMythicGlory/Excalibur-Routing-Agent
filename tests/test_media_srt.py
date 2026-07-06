@@ -4,9 +4,9 @@ import os
 
 from pathlib import Path
 
-from obs_auto_director.matrix.clock import set_now_override
-from obs_auto_director.matrix.matrix_core import MatrixCore
-from obs_auto_director.matrix.media.ingest import (
+from excalibur.matrix.clock import set_now_override
+from excalibur.matrix.matrix_core import MatrixCore
+from excalibur.matrix.media.ingest import (
     MediaIngestManager,
     MediaInput,
     build_ingest_command,

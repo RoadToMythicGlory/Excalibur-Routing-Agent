@@ -9,7 +9,7 @@ The matrix itself listens on one SRT port per input. Start the backend with the
 direct-SRT config:
 
 ```powershell
-obs-matrix serve --port 8800 --media configs/media.srt.example.yaml --simulate
+excalibur-matrix serve --port 8800 --media configs/media.srt.example.yaml --simulate
 ```
 
 Inputs listen on:
@@ -53,7 +53,7 @@ mediamtx configs/mediamtx.yml
 3. Start the backend pointed at the MediaMTX config:
 
 ```powershell
-obs-matrix serve --port 8800 --media configs/media.example.yaml --simulate
+excalibur-matrix serve --port 8800 --media configs/media.example.yaml --simulate
 ```
 
 4. Publish SRT into MediaMTX as a caller, using `streamid=publish:<input_id>`:
@@ -79,7 +79,7 @@ Start the backend without a media file and set SRT per input from the
 **Configuration** panel:
 
 ```powershell
-obs-matrix serve --port 8800 --simulate
+excalibur-matrix serve --port 8800 --simulate
 ```
 
 For each input choose an SRT mode and save:

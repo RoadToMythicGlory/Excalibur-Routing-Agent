@@ -20,7 +20,7 @@ Hand each player just their destination, e.g. `Connect to: 1.2.3.4:9003`.
 Start the receiver:
 
 ```powershell
-obs-matrix serve --port 8800 --media configs/media.srt.example.yaml --simulate
+excalibur-matrix serve --port 8800 --media configs/media.srt.example.yaml --simulate
 ```
 
 The player's stream is H.264 + AAC over MPEG-TS, which the matrix FFmpeg preview

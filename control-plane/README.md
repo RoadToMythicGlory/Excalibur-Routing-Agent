@@ -9,7 +9,7 @@ latency budget, the routing-engine audit log, and operator overrides.
 1. Start the backend control API:
 
 ```bash
-python -m obs_auto_director.matrix.run serve
+python -m excalibur.matrix.run serve
 ```
 
 2. Install and run the UI:
