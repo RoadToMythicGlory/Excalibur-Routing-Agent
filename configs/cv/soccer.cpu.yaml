@@ -1,0 +1,6 @@
+profile: cpu
+width: 320
+fps: 2.5
+batch: 1
+provider: CPUExecutionProvider
+stagger: true

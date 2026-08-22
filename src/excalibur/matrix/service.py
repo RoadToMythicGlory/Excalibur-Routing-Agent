@@ -7,11 +7,16 @@ import threading
 from pathlib import Path
 
 from excalibur.config import ObsConfig
+from excalibur.cv.agent.vision_agent import SoccerVisionAgent
+from excalibur.cv.inference.engine import load_manifest
+from excalibur.cv.inference.onnx_runner import OnnxInferenceEngine
+from excalibur.cv.profiles import resolve_runtime_profile
 from excalibur.matrix.agents.director_agent import (
     DEFAULT_ROTATE_INTERVAL_MS,
     DirectorAgent,
 )
 from excalibur.matrix.buses import MatrixBuses
+from excalibur.matrix.clock import now_ms
 from excalibur.matrix.config_store import MatrixConfigStore
 from excalibur.matrix.domain import (
     OutputKind,
@@ -36,6 +41,12 @@ from excalibur.matrix.media.virtualcam import VirtualCamOutputManager
 from excalibur.matrix.gsi.receiver import GsiReceiver
 from excalibur.matrix.gsi.simulator import ROSTER
 from excalibur.matrix.intelligence.engine import MatchIntelligenceEngine
+from excalibur.matrix.soccer.camera_map import SoccerCameraMap
+from excalibur.matrix.soccer.config import load_soccer_profile
+from excalibur.matrix.soccer.director import SoccerDirector
+from excalibur.matrix.soccer.domain import DirectorMode
+from excalibur.matrix.soccer.fusion import SoccerFusion
+from excalibur.matrix.soccer.receiver import SoccerReceiver
 from excalibur.matrix.latency import LatencyBudget, LatencyTracker
 from excalibur.matrix.matrix_core import MatrixCore
 from excalibur.matrix.net import local_ip_addresses, primary_ip, public_ip
@@ -154,6 +165,7 @@ class MatrixService:
         config_path: str = "configs/matrix.runtime.json",
         input_count: int | None = None,
         output_count: int | None = None,
+        sport_mode: str | None = None,
     ) -> None:
         self.budget = budget or LatencyBudget()
         self.latency = LatencyTracker(self.budget)
@@ -176,13 +188,33 @@ class MatrixService:
             self.buses, budget=self.budget, steam_to_input=self.steam_to_input
         )
         self.intelligence = MatchIntelligenceEngine(self.buses)
+        if sport_mode:
+            self.config_store.set_sport_mode(sport_mode)
+        self.sport_mode = self.config_store.sport_mode
+        self.main_input = self.config_store.main_input
+        self.cv_profile_name = self.config_store.cv_profile
+        self.director_mode = DirectorMode(self.config_store.director_mode)
+        self.suspension = self.config_store.suspension
+        self._cv_runtime = None
+        self.soccer_profile = None
+        self.soccer = None
+        self.soccer_fusion = None
+        self.soccer_cameras = None
+        self.soccer_director = None
+        self.vision_agent = None
+        cs2_enabled = (
+            self.sport_mode != "soccer" and self.director_mode == DirectorMode.AUTOMATIC
+        )
         self.director = DirectorAgent(
             self.buses,
             self.matrix,
             program_output=program_output,
             steam_to_input=self.steam_to_input,
-            enabled=self.config_store.agent_enabled,
+            enabled=cs2_enabled,
+            state_provider=lambda: self.gsi.state,
         )
+        if self.sport_mode == "soccer":
+            self._init_soccer()
 
         # Background ticker that drives the director's idle rotation so a quiet
         # match keeps cycling across live inputs instead of sitting on one feed.
@@ -192,7 +224,9 @@ class MatrixService:
         self.rotate_interval_ms = DEFAULT_ROTATE_INTERVAL_MS
 
         self.frame_source = SimulatedFrameTapSource()
-        self.frames = FrameTapManager(self.matrix, self.frame_source, budget=self.budget)
+        self.frames = FrameTapManager(
+            self.matrix, self.frame_source, budget=self.budget, fps=self._frame_tap_fps()
+        )
         self.media: MediaIngestManager | None = None
         self._media_preview_dir = ".preview"
         self._media_freshness_ms = 2000.0
@@ -240,6 +274,49 @@ class MatrixService:
         )
 
         self._apply_config_store()
+
+    def _init_soccer(self) -> None:
+        profile_path = self.config_store.game_profile or "configs/games/soccer.json"
+        self.soccer_profile = load_soccer_profile(profile_path)
+        self.main_input = self.soccer_profile.main_input
+        self.soccer = SoccerReceiver(self.buses, self.soccer_profile)
+        self.soccer_fusion = SoccerFusion(self.buses, self.soccer_profile)
+        self.soccer_cameras = SoccerCameraMap(self.soccer_profile)
+        self.soccer_director = SoccerDirector(
+            self.buses,
+            self.matrix,
+            self.soccer_fusion,
+            self.soccer_cameras,
+            self.soccer_profile,
+        )
+        self.soccer_director.set_mode(self.director_mode)
+        runtime = resolve_runtime_profile(self.soccer_profile, self.cv_profile_name)
+        self._cv_runtime = runtime
+        manifest = load_manifest(self.soccer_profile.inference.model_manifest)
+        engine = None
+        if manifest is not None and manifest.path:
+            # A deployed model manifest gets the real ONNX backend; without one
+            # the deterministic mock keeps the pipeline alive in shadow mode.
+            engine = OnnxInferenceEngine(manifest, runtime.provider)
+        self.vision_agent = SoccerVisionAgent(
+            self.soccer_fusion,
+            self.soccer_profile,
+            runtime,
+            engine=engine,
+            manifest=manifest,
+            latency=self.latency,
+            budget=self.budget,
+        )
+        if self.soccer_fusion is not None:
+            self.soccer_fusion.model_version = (
+                manifest.version if manifest is not None else None
+            )
+        logger.info(
+            "Soccer director ready profile=%s mode=%s cv=%s",
+            self.soccer_profile.version,
+            self.director_mode.value,
+            runtime.name,
+        )
 
     def _configure_slots(self, active_inputs: int, active_outputs: int) -> None:
         for index in range(1, self.input_count + 1):
@@ -342,13 +419,26 @@ class MatrixService:
                 int(port),
                 int(fields.get("srt_latency") or 200),
             )
-            return MediaInput(input_id=input_id, read_url=url, source_type="srt"), "srt"
+            return (
+                MediaInput(
+                    input_id=input_id,
+                    read_url=url,
+                    source_type="srt",
+                    width=self._ingest_width(),
+                ),
+                "srt",
+            )
         if mode in ("rtsp", "url"):
             url = (fields.get("source_url") or "").strip()
             if not url:
                 return None, None
             return (
-                MediaInput(input_id=input_id, read_url=url, source_type=mode),
+                MediaInput(
+                    input_id=input_id,
+                    read_url=url,
+                    source_type=mode,
+                    width=self._ingest_width(),
+                ),
                 mode,
             )
         if mode == "file":
@@ -361,6 +451,7 @@ class MatrixService:
                     read_url=path,
                     source_type="file",
                     loop=_as_bool(fields.get("loop")),
+                    width=self._ingest_width(),
                 ),
                 "file",
             )
@@ -398,6 +489,16 @@ class MatrixService:
         """Fan out an applied route to OBS layout switching and the program feed."""
         self.obs.on_route_applied(route, decision)
         self._update_program_output(route)
+        if (
+            self.sport_mode == "soccer"
+            and self.soccer_profile is not None
+            and self.soccer_profile.manual_suspension.on_operator_route
+            and str(getattr(decision, "producer", "")).startswith("operator:")
+            and decision.reason in ("manual_cut", "take_next", "emergency_route")
+        ):
+            self.suspend_automation(
+                operator=str(decision.producer), reason=decision.reason
+            )
 
     def _update_program_output(self, route) -> None:
         """Point the Excalibur program output at the input now routed to program.
@@ -456,6 +557,19 @@ class MatrixService:
         """The URL an OBS media source should read to show the program feed."""
         return program_obs_url(self.program.publish_url, primary_ip())
 
+    def _frame_tap_fps(self) -> float:
+        """CV sample rate: the active inference profile's FPS in soccer mode."""
+        if self.sport_mode == "soccer" and self._cv_runtime is not None:
+            return float(self._cv_runtime.fps)
+        return 5.0
+
+    def _ingest_width(self) -> int:
+        """Preview/CV decode width. Never below the 480px UI preview default,
+        but wide enough that a GPU inference profile is not fed upscaled JPEGs."""
+        if self.sport_mode == "soccer" and self._cv_runtime is not None:
+            return max(480, int(self._cv_runtime.width))
+        return 480
+
     def _ensure_media(self) -> None:
         if self.media is not None:
             return
@@ -464,9 +578,12 @@ class MatrixService:
             [],
             preview_dir=self._media_preview_dir,
             freshness_ms=self._media_freshness_ms,
+            load_pixels=self.sport_mode == "soccer",
         )
         self.frame_source = self.media.source
-        self.frames = FrameTapManager(self.matrix, self.frame_source, budget=self.budget)
+        self.frames = FrameTapManager(
+            self.matrix, self.frame_source, budget=self.budget, fps=self._frame_tap_fps()
+        )
         self.media.start()
         # Real feeds exist now, so the program publisher may spawn FFmpeg.
         self.program.enable()
@@ -580,6 +697,11 @@ class MatrixService:
 
     def config_snapshot(self) -> dict:
         return {
+            "sport_mode": self.sport_mode,
+            "game_profile": self.config_store.game_profile,
+            "director_mode": self.director_mode.value,
+            "main_input": self.main_input,
+            "cv_profile": self.cv_profile_name,
             "program_output": self.program_output,
             "input_count": len(self.matrix.inputs),
             "output_count": len(self.matrix.outputs),
@@ -683,6 +805,11 @@ class MatrixService:
 
     @property
     def agent_enabled(self) -> bool:
+        # A manually-suspended director is not "enabled": it will not cut until
+        # the operator explicitly resumes. Clients read director_mode for the
+        # three-way distinction.
+        if self.sport_mode == "soccer" and self.soccer_director is not None:
+            return self.director_mode == DirectorMode.AUTOMATIC
         return self.director.enabled
 
     def set_agent_enabled(self, enabled: bool) -> bool:
@@ -690,51 +817,170 @@ class MatrixService:
 
         When deactivated the agent stops proposing cuts (both story-driven and
         idle rotation); only operator commands move the program. The choice is
-        persisted so it survives a restart.
+        persisted so it survives a restart. For soccer, ``enabled=True`` is the
+        explicit resume from manual suspension.
         """
         value = _as_bool(enabled)
+        if self.sport_mode == "soccer":
+            mode = DirectorMode.AUTOMATIC if value else DirectorMode.DISABLED
+            self.set_director_mode(mode)
+            logger.info("AI director %s", "activated" if value else "deactivated")
+            return value
         self.director.enabled = value
         self.config_store.set_agent_enabled(value)
+        self.director_mode = (
+            DirectorMode.AUTOMATIC if value else DirectorMode.DISABLED
+        )
         logger.info("AI director %s", "activated" if value else "deactivated")
         return value
 
+    def set_director_mode(self, mode: DirectorMode | str, persist: bool = True) -> str:
+        value = DirectorMode(mode)
+        self.director_mode = value
+        if self.soccer_director is not None:
+            self.soccer_director.set_mode(value)
+        self.director.enabled = (
+            self.sport_mode != "soccer" and value == DirectorMode.AUTOMATIC
+        )
+        if value != DirectorMode.MANUAL_SUSPENDED:
+            self.suspension = None
+        if persist:
+            self.config_store.set_director_mode(value.value)
+            if value != DirectorMode.MANUAL_SUSPENDED:
+                self.config_store.set_suspension(None)
+        return value.value
+
+    def suspend_automation(self, operator: str, reason: str) -> None:
+        if self.director_mode == DirectorMode.DISABLED:
+            return
+        persist = (
+            self.soccer_profile is None
+            or self.soccer_profile.manual_suspension.persist
+        )
+        self.suspension = {"by": operator, "reason": reason, "at": now_ms()}
+        self.set_director_mode(DirectorMode.MANUAL_SUSPENDED, persist=persist)
+        if persist:
+            self.config_store.set_suspension(self.suspension)
+        logger.info("director suspended by %s reason=%s", operator, reason)
+
     def start_director(self) -> None:
-        """Spin up the idle-rotation ticker (idempotent)."""
+        """Spin up the idle-rotation or soccer decision ticker (idempotent)."""
         if self._director_thread is not None:
             return
         self._director_stop.clear()
 
+        interval = 0.2 if self.sport_mode == "soccer" else max(
+            0.15, self.rotate_interval_ms / 1000.0
+        )
+
         def _loop() -> None:
-            interval = max(0.25, self.rotate_interval_ms / 1000.0)
             while not self._director_stop.wait(interval):
                 try:
-                    self.director.rotate_idle()
+                    if self.sport_mode == "soccer":
+                        self.tick_soccer()
+                    else:
+                        self.director.rotate_idle()
                 except Exception:  # pragma: no cover - defensive, keep ticker alive
-                    logger.exception("director idle rotation failed")
+                    logger.exception("director ticker failed")
 
         self._director_thread = threading.Thread(
             target=_loop, name="director-rotate", daemon=True
         )
         self._director_thread.start()
         logger.info(
-            "Director idle rotation started (every %.0f ms)", self.rotate_interval_ms
+            "Director ticker started sport=%s interval=%.0f ms",
+            self.sport_mode,
+            interval * 1000.0,
         )
 
     def stop_director(self) -> None:
         self._director_stop.set()
+        thread = self._director_thread
         self._director_thread = None
+        if (
+            thread is not None
+            and thread.is_alive()
+            and threading.current_thread() is not thread
+        ):
+            thread.join(timeout=2.0)
+
+    def set_sport_mode(self, sport: str, game_profile: str | None = None) -> dict:
+        """Switch the active sport at runtime; persisted across restarts.
+
+        Rebuilds the sport-specific director stack in place. If real media
+        ingest is already running, its decode settings (pixel loading for CV)
+        only apply after a service restart, which the response flags.
+        """
+        if game_profile is not None:
+            self.config_store.set_game_profile(game_profile or None)
+        value = self.config_store.set_sport_mode(sport)
+        changed = value != self.sport_mode
+        self.sport_mode = value
+        if changed:
+            if value == "soccer":
+                self._init_soccer()
+                self.soccer_director.set_mode(self.director_mode)
+            else:
+                self.soccer_profile = None
+                self.soccer = None
+                self.soccer_fusion = None
+                self.soccer_cameras = None
+                self.soccer_director = None
+                self.vision_agent = None
+                self._cv_runtime = None
+                self.main_input = self.config_store.main_input
+            self.director.enabled = (
+                value != "soccer" and self.director_mode == DirectorMode.AUTOMATIC
+            )
+            if self._director_thread is not None:
+                self.stop_director()
+                self.start_director()
+            logger.info("sport mode switched to %s", value)
+        return {
+            "sport_mode": value,
+            "game_profile": self.config_store.game_profile,
+            "changed": changed,
+            "media_restart_required": bool(
+                changed and value == "soccer" and self.media is not None
+            ),
+        }
 
     def connect_obs(self) -> None:
         self.obs.connect()
 
     def feed_gsi(self, payload: dict) -> None:
         """Push one GSI payload through the whole pipeline."""
+        if self.sport_mode == "soccer":
+            return
         state = self.gsi.ingest(payload)
         if self.gsi.is_fresh():
             self.intelligence.update(state)
         self.latency.record(
             "gsi_to_game_state", state.age_ms(), self.budget.gsi_to_game_state_ms
         )
+
+    def feed_soccer_events(self, payload: dict) -> dict:
+        """Ingest one structured soccer heartbeat or event revision."""
+        if self.soccer is None or self.soccer_fusion is None:
+            raise RuntimeError("soccer director is not active")
+        item = self.soccer.ingest(payload)
+        view = self.soccer_fusion.ingest_structured(item)
+        if self.soccer_director is not None:
+            self.soccer_director.tick()
+        snapshot = view.snapshot()
+        snapshot["accepted"] = item is not None
+        snapshot["rejected_total"] = self.soccer.rejected
+        return snapshot
+
+    def tick_soccer(self) -> None:
+        frames = self.frames.tap_all()
+        if self.vision_agent is not None:
+            self.vision_agent.process(frames)
+        if self.soccer_cameras is not None and self.soccer_fusion is not None:
+            for assignment in self.soccer_fusion.cameras.values():
+                self.soccer_cameras.update(assignment)
+        if self.soccer_director is not None:
+            self.soccer_director.tick()
 
     def tick_frames(self) -> None:
         self.frames.tap_all()
@@ -743,6 +989,10 @@ class MatrixService:
         return {
             "media_enabled": self.media is not None,
             "agent_enabled": self.agent_enabled,
+            "sport_mode": self.sport_mode,
+            "director_mode": self.director_mode.value,
+            "main_input": self.main_input,
+            "soccer": self._soccer_snapshot(),
             "program": self.program.status(),
             "virtualcam": {
                 "enabled": self.virtualcam_enabled,
@@ -763,11 +1013,47 @@ class MatrixService:
                     "affected_players": event.affected_players,
                     "recommended_inputs": event.recommended_inputs,
                     "evidence": event.evidence,
+                    "lifecycle": event.lifecycle,
+                    "source": event.source,
+                    "correlation_id": event.correlation_id,
+                    "phase": event.phase,
                 }
                 for event in self.buses.intelligence.recent(20)
             ],
             "match": self._match_snapshot(),
         }
+
+    def _soccer_snapshot(self) -> dict | None:
+        if self.soccer_fusion is None:
+            return None
+        view = self.soccer_fusion.view()
+        payload = view.snapshot()
+        payload["director_mode"] = self.director_mode.value
+        payload["main_input"] = self.main_input
+        payload["cv_profile"] = self.cv_profile_name
+        payload["vision_degraded"] = (
+            self.vision_agent.degraded if self.vision_agent is not None else False
+        )
+        payload["vision_routing_allowed"] = (
+            self.vision_agent.routing_allowed if self.vision_agent is not None else False
+        )
+        payload["rejected"] = self.soccer.rejected if self.soccer is not None else 0
+        payload["suspension"] = self.suspension
+        payload["warnings"] = [
+            item
+            for item in (
+                view.fallback_reason,
+                "heartbeat_overdue"
+                if self.soccer is not None and self.soccer.heartbeat_overdue()
+                else None,
+                "cv_shadow" if self.vision_agent and not self.vision_agent.routing_allowed else None,
+                "cv_degraded" if self.vision_agent and self.vision_agent.degraded else None,
+            )
+            if item
+        ]
+        if self.soccer_cameras is not None:
+            payload["cameras"] = self.soccer_cameras.snapshot()
+        return payload
 
     def _match_snapshot(self) -> dict | None:
         state = self.gsi.state
@@ -784,6 +1070,7 @@ class MatrixService:
                 "state": state.bomb.state,
                 "site": state.bomb.site,
                 "countdown_ms": state.bomb.countdown_ms,
+                "player_slot": state.bomb.player_slot,
             },
             "players": [
                 {
@@ -794,11 +1081,19 @@ class MatrixService:
                     "health": player.health,
                     "alive": player.alive,
                     "active_weapon": player.active_weapon,
+                    "round_kills": player.round_kills,
+                    "match_kills": player.match_kills,
                 }
                 for player in state.players.values()
             ],
         }
 
 
-def build_default_service(obs_dry_run: bool = True) -> MatrixService:
-    return MatrixService(obs_dry_run=obs_dry_run)
+def build_default_service(
+    obs_dry_run: bool = True,
+    sport_mode: str | None = None,
+    game_profile: str | None = None,
+) -> MatrixService:
+    if game_profile is not None:
+        MatrixConfigStore("configs/matrix.runtime.json").set_game_profile(game_profile)
+    return MatrixService(obs_dry_run=obs_dry_run, sport_mode=sport_mode)

@@ -210,20 +210,34 @@ class FfmpegFrameTapSource:
     pipeline sees real capture timestamps.
     """
 
-    def __init__(self, preview_dir: Path) -> None:
+    def __init__(self, preview_dir: Path, load_pixels: bool = False) -> None:
         self.preview_dir = preview_dir
+        self.load_pixels = load_pixels
 
     def grab(self, input_id: str) -> FrameTap | None:
         path = self.preview_dir / f"{input_id}.jpg"
         if not path.exists():
             return None
         captured_at = path.stat().st_mtime * 1000.0
+        pixels = None
+        width = 0
+        height = 0
+        if self.load_pixels:
+            try:
+                import cv2
+
+                image = cv2.imread(str(path), cv2.IMREAD_COLOR)
+            except Exception:
+                image = None
+            if image is not None:
+                pixels = image
+                height, width = image.shape[:2]
         return FrameTap(
             input_id=input_id,
-            width=0,
-            height=0,
+            width=width,
+            height=height,
             captured_at=captured_at,
-            pixels=None,
+            pixels=pixels,
             metadata={"path": str(path), "source": "ffmpeg"},
         )
 
@@ -244,6 +258,7 @@ class MediaIngestManager:
         freshness_ms: float = 2000.0,
         restart_backoff_ms: float = 2000.0,
         srt_restart_backoff_ms: float = 250.0,
+        load_pixels: bool = False,
     ) -> None:
         self.matrix = matrix
         self.preview_dir = Path(preview_dir)
@@ -263,7 +278,7 @@ class MediaIngestManager:
             spec.input_id: _Worker(spec=spec, preview_path=self.preview_dir / f"{spec.input_id}.jpg")
             for spec in inputs
         }
-        self.source = FfmpegFrameTapSource(self.preview_dir)
+        self.source = FfmpegFrameTapSource(self.preview_dir, load_pixels=load_pixels)
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
 

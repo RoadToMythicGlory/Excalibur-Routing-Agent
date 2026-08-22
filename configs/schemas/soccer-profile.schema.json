@@ -1,0 +1,200 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://excalibur.local/schemas/soccer-profile.schema.json",
+  "title": "Excalibur Soccer Director Profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "sport",
+    "version",
+    "game",
+    "main_input",
+    "program_output",
+    "sources",
+    "inference",
+    "gating",
+    "events",
+    "camera_roles",
+    "return_to_main",
+    "manual_suspension"
+  ],
+  "properties": {
+    "sport": { "const": "soccer" },
+    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "game": { "type": "string", "minLength": 1 },
+    "main_input": { "type": "string", "pattern": "^input_[0-9]{2}$" },
+    "program_output": { "type": "string", "pattern": "^output_[0-9]{2}$" },
+    "sources": { "$ref": "#/$defs/sources" },
+    "inference": { "$ref": "#/$defs/inference" },
+    "gating": { "$ref": "#/$defs/gating" },
+    "events": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["foul", "free_kick", "penalty_kick", "corner_kick", "burst_attack"],
+      "properties": {
+        "foul": { "$ref": "#/$defs/eventPlan" },
+        "free_kick": { "$ref": "#/$defs/eventPlan" },
+        "penalty_kick": { "$ref": "#/$defs/eventPlan" },
+        "corner_kick": { "$ref": "#/$defs/eventPlan" },
+        "burst_attack": { "$ref": "#/$defs/eventPlan" }
+      }
+    },
+    "camera_roles": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/cameraRole" }
+    },
+    "return_to_main": { "$ref": "#/$defs/returnToMain" },
+    "manual_suspension": { "$ref": "#/$defs/manualSuspension" },
+    "evaluation_gates": { "$ref": "#/$defs/evaluationGates" }
+  },
+  "$defs": {
+    "sources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "structured_heartbeat_ms",
+        "structured_freshness_ms",
+        "structured_stale_ms",
+        "vision_freshness_ms",
+        "max_future_skew_ms"
+      ],
+      "properties": {
+        "structured_heartbeat_ms": { "type": "number", "minimum": 50 },
+        "structured_freshness_ms": { "type": "number", "minimum": 50 },
+        "structured_stale_ms": { "type": "number", "minimum": 50 },
+        "vision_freshness_ms": { "type": "number", "minimum": 50 },
+        "max_future_skew_ms": { "type": "number", "minimum": 0 }
+      }
+    },
+    "runtimeProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["width", "fps", "batch", "provider", "stagger"],
+      "properties": {
+        "width": { "type": "integer", "minimum": 160 },
+        "fps": { "type": "number", "minimum": 0.5 },
+        "batch": { "type": "integer", "minimum": 1 },
+        "provider": { "type": "string" },
+        "stagger": { "type": "boolean" }
+      }
+    },
+    "inference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["default_profile", "cpu", "gpu", "shadow_until_validated"],
+      "properties": {
+        "default_profile": { "enum": ["cpu", "gpu", "auto"] },
+        "cpu": { "$ref": "#/$defs/runtimeProfile" },
+        "gpu": { "$ref": "#/$defs/runtimeProfile" },
+        "shadow_until_validated": { "type": "boolean" },
+        "model_manifest": { "type": ["string", "null"] }
+      }
+    },
+    "gating": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "min_event_confidence",
+        "min_role_confidence",
+        "start_debounce_ms",
+        "end_debounce_ms",
+        "failsafe_max_event_ms",
+        "cut_cooldown_ms",
+        "min_dwell_ms",
+        "score_margin",
+        "ordinary_pass_not_event"
+      ],
+      "properties": {
+        "min_event_confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "min_role_confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "start_debounce_ms": { "type": "number", "minimum": 0 },
+        "end_debounce_ms": { "type": "number", "minimum": 0 },
+        "failsafe_max_event_ms": { "type": "number", "minimum": 1000 },
+        "cut_cooldown_ms": { "type": "number", "minimum": 0 },
+        "min_dwell_ms": { "type": "number", "minimum": 0 },
+        "score_margin": { "type": "number", "minimum": 0 },
+        "ordinary_pass_not_event": { "type": "boolean" }
+      }
+    },
+    "eventPlan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["priority", "hold_ms", "ttl_ms", "interrupt", "phases"],
+      "properties": {
+        "priority": { "type": "integer", "minimum": 1, "maximum": 100 },
+        "hold_ms": { "type": "number", "minimum": 0 },
+        "ttl_ms": { "type": "number", "minimum": 100 },
+        "interrupt": { "type": "boolean" },
+        "max_duration_ms": { "type": "number", "minimum": 500 },
+        "phases": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["setup", "execution", "follow_through"],
+          "properties": {
+            "setup": { "$ref": "#/$defs/phasePlan" },
+            "execution": { "$ref": "#/$defs/phasePlan" },
+            "follow_through": { "$ref": "#/$defs/phasePlan" }
+          }
+        }
+      }
+    },
+    "phasePlan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["preferred_roles", "fallback_roles"],
+      "properties": {
+        "preferred_roles": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" }
+        },
+        "fallback_roles": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "cameraRole": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "pin_main"],
+      "properties": {
+        "id": { "type": "string" },
+        "label": { "type": "string" },
+        "pin_main": { "type": "boolean" }
+      }
+    },
+    "returnToMain": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["after_end_ms", "priority", "confidence"],
+      "properties": {
+        "after_end_ms": { "type": "number", "minimum": 0 },
+        "priority": { "type": "integer", "minimum": 1 },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "manualSuspension": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["on_operator_route", "persist", "resume_action"],
+      "properties": {
+        "on_operator_route": { "type": "boolean" },
+        "persist": { "type": "boolean" },
+        "resume_action": { "const": "explicit_resume" }
+      }
+    },
+    "evaluationGates": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "min_precision": { "type": "number", "minimum": 0, "maximum": 1 },
+        "min_recall": { "type": "number", "minimum": 0, "maximum": 1 },
+        "max_false_events_per_match": { "type": "number", "minimum": 0 },
+        "max_inference_ms": { "type": "number", "minimum": 1 },
+        "max_switch_rate_per_min": { "type": "number", "minimum": 0 }
+      }
+    }
+  }
+}

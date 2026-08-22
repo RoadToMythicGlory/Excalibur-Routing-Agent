@@ -1,0 +1,26 @@
+[swscaler @ 00000148799800c0] deprecated pixel format used, make sure you did set range correctly
+[mpegts @ 000001486db5d280] Packet corrupt (stream = 0, dts = 1780920).
+[in#0/mpegts @ 000001486db5ce80] corrupt input packet in stream 0
+[mpegts @ 000001486db5d280] DTS 670920 < 1780920 out of order
+[vist#0:0/h264 @ 000001487a010d80] timestamp discontinuity (stream id=256): -12366666, new offset= 12366666
+[mpegts @ 000001486db5d280] Packet corrupt (stream = 0, dts = 2263920).
+[in#0/mpegts @ 000001486db5ce80] corrupt input packet in stream 0
+[mpegts @ 000001486db5d280] DTS 670920 < 2263920 out of order
+[vist#0:0/h264 @ 000001487a010d80] timestamp discontinuity (stream id=256): -17733333, new offset= 30099999
+[mpegts @ 000001486db5d280] DTS 670920 < 8440920 out of order
+[vist#0:0/h264 @ 000001487a010d80] timestamp discontinuity (stream id=256): -86366666, new offset= 116466665
+
+=== spawn 1782131513347 ===
+[swscaler @ 00000187b6575780] deprecated pixel format used, make sure you did set range correctly
+[mpegts @ 00000187aa56d280] Packet corrupt (stream = 0, dts = 7111920).
+[in#0/mpegts @ 00000187aa56ce80] corrupt input packet in stream 0
+[mpegts @ 00000187aa56d280] DTS 670920 < 7111920 out of order
+[vist#0:0/h264 @ 00000187b6339140] timestamp discontinuity (stream id=256): -71600000, new offset= 71600000
+[mpegts @ 00000187aa56d280] Packet corrupt (stream = 0, dts = 6484920).
+[in#0/mpegts @ 00000187aa56ce80] corrupt input packet in stream 0
+[mpegts @ 00000187aa56d280] DTS 670920 < 6484920 out of order
+[vist#0:0/h264 @ 00000187b6339140] timestamp discontinuity (stream id=256): -64633333, new offset= 136233333
+[mpegts @ 00000187aa56d280] Packet corrupt (stream = 0, dts = 4102920).
+[in#0/mpegts @ 00000187aa56ce80] corrupt input packet in stream 0
+[mpegts @ 00000187aa56d280] DTS 670920 < 4102920 out of order
+[vist#0:0/h264 @ 00000187b6339140] timestamp discontinuity (stream id=256): -38166667, new offset= 174400000

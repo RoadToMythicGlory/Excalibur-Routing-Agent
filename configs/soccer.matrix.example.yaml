@@ -1,0 +1,31 @@
+# Example soccer matrix layout. Camera 1 is always the lead/main camera.
+# Remaining cameras are live feeds whose roles are inferred from video.
+
+sport_mode: soccer
+game_profile: configs/games/soccer.json
+main_input: input_01
+program_output: output_01
+director_mode: automatic
+cv_profile: auto
+
+inputs:
+  input_01:
+    player_name: Camera 1 - Lead
+    role: main_wide
+    obs_scene: "Soccer - Main"
+  input_02:
+    player_name: High tactical
+    role: unknown
+    obs_scene: "Soccer - Cam 02"
+  input_03:
+    player_name: Sideline
+    role: unknown
+    obs_scene: "Soccer - Cam 03"
+  input_04:
+    player_name: Goal line
+    role: unknown
+    obs_scene: "Soccer - Cam 04"
+  input_05:
+    player_name: Behind goal
+    role: unknown
+    obs_scene: "Soccer - Cam 05"

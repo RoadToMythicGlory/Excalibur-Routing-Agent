@@ -52,7 +52,11 @@ export async function setAgentEnabled(enabled: boolean) {
   if (!response.ok) {
     throw new Error(`Agent toggle failed: ${response.status}`);
   }
-  return response.json() as Promise<{ status: string; agent_enabled: boolean }>;
+  return response.json() as Promise<{
+    status: string;
+    agent_enabled: boolean;
+    director_mode?: string;
+  }>;
 }
 
 export type SourceMode =

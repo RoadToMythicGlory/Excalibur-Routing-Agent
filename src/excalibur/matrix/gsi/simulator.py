@@ -25,7 +25,15 @@ ROSTER = [
 ]
 
 
-def _player(name: str, team: str, health: int, weapon: str, money: int = 4000) -> dict:
+def _player(
+    name: str,
+    team: str,
+    health: int,
+    weapon: str,
+    money: int = 4000,
+    round_kills: int = 0,
+    round_killhs: int = 0,
+) -> dict:
     weapons = {
         "weapon_0": {"name": "weapon_knife", "type": "Knife", "state": "holstered"},
         "weapon_1": {"name": weapon, "type": "Rifle", "state": "active"},
@@ -34,7 +42,9 @@ def _player(name: str, team: str, health: int, weapon: str, money: int = 4000) -
         "name": name,
         "team": team,
         "state": {"health": health, "armor": 100 if health > 0 else 0, "money": money,
-                  "flashed": 0, "burning": 0},
+                  "flashed": 0, "burning": 0,
+                  "round_kills": round_kills, "round_killhs": round_killhs},
+        "match_stats": {"kills": round_kills, "deaths": 0},
         "weapons": weapons,
     }
 
@@ -98,8 +108,17 @@ def clutch_round_sequence(start_ts: float = 1_700_000_000.0) -> Iterator[dict]:
     ts += 1
 
     # Trades happen: four CTs die, leaving one CT alive (last alive / clutch).
+    # The entry AWPer picks up a double kill (multi_kill story) and teammates
+    # trade the rest.
     dead = {steamid: _player(name, "CT", 0, "weapon_m4a1")
             for steamid, name, team in ROSTER[1:5]}
+    killers = {
+        ROSTER[5][0]: _player(
+            ROSTER[5][1], "T", 100, "weapon_awp", round_kills=2, round_killhs=1
+        ),
+        ROSTER[6][0]: _player(ROSTER[6][1], "T", 80, "weapon_ak47", round_kills=1),
+        ROSTER[7][0]: _player(ROSTER[7][1], "T", 65, "weapon_ak47", round_kills=1),
+    }
     yield _payload(
         18,
         "live",
@@ -107,6 +126,7 @@ def clutch_round_sequence(start_ts: float = 1_700_000_000.0) -> Iterator[dict]:
         {
             ROSTER[0][0]: _player(ROSTER[0][1], "CT", 42, "weapon_awp"),
             **dead,
+            **killers,
         },
         bomb={"state": "planted", "site": "A", "countdown": 28.0},
     )
@@ -120,8 +140,29 @@ def clutch_round_sequence(start_ts: float = 1_700_000_000.0) -> Iterator[dict]:
         {
             ROSTER[0][0]: _player(ROSTER[0][1], "CT", 18, "weapon_awp"),
             **dead,
+            **killers,
         },
         bomb={"state": "planted", "site": "A", "countdown": 14.0},
+    )
+    ts += 1
+
+    # The hero sticks the defuse with the clock nearly out (defuse drama +
+    # bomb last-seconds story).
+    yield _payload(
+        18,
+        "live",
+        ts,
+        {
+            ROSTER[0][0]: _player(ROSTER[0][1], "CT", 18, "weapon_awp"),
+            **dead,
+            **killers,
+        },
+        bomb={
+            "state": "defusing",
+            "site": "A",
+            "countdown": 7.0,
+            "player": ROSTER[0][0],
+        },
     )
 
 

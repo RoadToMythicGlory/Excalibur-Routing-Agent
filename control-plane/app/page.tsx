@@ -71,7 +71,11 @@ export default function Page() {
       <div className="header">
         <img src="/logo.png?v=2" alt="Excalibur Routing Agent" className="logo" />
         <div className="meta">
-          {state?.match
+          {state?.soccer
+            ? `soccer · ${state.soccer.event?.type ?? "open play"} · ${state.director_mode ?? "automatic"} · ${
+                state.soccer.authority
+              }`
+            : state?.match
             ? `${state.match.map_name ?? "map"} · ${state.match.round_id} · ${state.match.phase} · ${
                 state.match.fresh ? "GSI fresh" : "GSI stale"
               }`
@@ -97,6 +101,7 @@ export default function Page() {
               selectedInput={selectedInput}
               takingInput={takingInput}
               takeStatus={takeStatus}
+              soccerCameras={state.soccer?.cameras}
               onSelectInput={(inputId) => {
                 setSelectedInput(inputId);
                 setTakeStatus(null);
@@ -108,9 +113,17 @@ export default function Page() {
               inputs={state.matrix.inputs}
               outputs={state.matrix.outputs}
               agentEnabled={state.agent_enabled}
-              onAgentToggled={(enabled) =>
+              directorMode={state.director_mode}
+              sportMode={state.sport_mode}
+              onAgentToggled={(enabled, directorMode) =>
                 setState((prev) =>
-                  prev ? { ...prev, agent_enabled: enabled } : prev
+                  prev
+                    ? {
+                        ...prev,
+                        agent_enabled: enabled,
+                        director_mode: directorMode ?? prev.director_mode,
+                      }
+                    : prev
                 )
               }
             />
@@ -118,7 +131,7 @@ export default function Page() {
           </div>
           <div>
             <ConfigPanel />
-            <StoryPanel stories={state.intelligence} />
+            <StoryPanel stories={state.intelligence} soccer={state.soccer} />
             <LatencyPanel latency={state.latency} />
           </div>
         </div>

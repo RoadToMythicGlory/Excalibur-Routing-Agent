@@ -189,6 +189,9 @@ class PlayerState:
     active_weapon: str | None = None
     weapons: list[str] = field(default_factory=list)
     money: int = 0
+    round_kills: int = 0
+    round_kill_headshots: int = 0
+    match_kills: int = 0
     position: tuple[float, float, float] | None = None
     input_id: str | None = None
 
@@ -198,6 +201,9 @@ class BombState:
     state: str = "carried"  # carried, dropped, planted, defusing, defused, exploded
     site: str | None = None
     countdown_ms: float | None = None
+    # Slot of the player currently interacting with the bomb (carrier, planter,
+    # or defuser), mapped through steam_to_input when a mapping exists.
+    player_slot: str | None = None
 
 
 @dataclass
@@ -245,6 +251,10 @@ class MatchIntelligenceEvent:
     affected_players: list[str] = field(default_factory=list)
     recommended_inputs: list[str] = field(default_factory=list)
     evidence: list[str] = field(default_factory=list)
+    lifecycle: str | None = None
+    source: str | None = None
+    correlation_id: str | None = None
+    phase: str | None = None
     event_id: str = field(default_factory=new_id)
     created_at: float = field(default_factory=now_ms)
 

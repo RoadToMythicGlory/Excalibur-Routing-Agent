@@ -8,12 +8,16 @@ export function OperatorControls({
   inputs,
   outputs,
   agentEnabled,
+  directorMode,
+  sportMode,
   onAgentToggled,
 }: {
   inputs: InputSlot[];
   outputs: OutputSlot[];
   agentEnabled: boolean;
-  onAgentToggled?: (enabled: boolean) => void;
+  directorMode?: string;
+  sportMode?: string;
+  onAgentToggled?: (enabled: boolean, directorMode?: string) => void;
 }) {
   const [output, setOutput] = useState("output_01");
   const [input, setInput] = useState("input_01");
@@ -24,7 +28,7 @@ export function OperatorControls({
     setTogglingAgent(true);
     try {
       const result = await setAgentEnabled(!agentEnabled);
-      onAgentToggled?.(result.agent_enabled);
+      onAgentToggled?.(result.agent_enabled, result.director_mode);
       setStatus(`AI director ${result.agent_enabled ? "activated" : "deactivated"}`);
     } catch (error) {
       setStatus(`error: ${(error as Error).message}`);
@@ -64,27 +68,53 @@ export function OperatorControls({
     }
   }
 
+  const suspended = directorMode === "manual_suspended";
+  async function resumeAutomation() {
+    setTogglingAgent(true);
+    try {
+      const result = await setAgentEnabled(true);
+      onAgentToggled?.(result.agent_enabled, result.director_mode);
+      setStatus("AI director resumed");
+    } catch (error) {
+      setStatus(`error: ${(error as Error).message}`);
+    } finally {
+      setTogglingAgent(false);
+    }
+  }
+
   return (
     <div className="panel">
       <div className="agent-toggle-row">
         <div>
           <h2>AI Director</h2>
           <p className="meta">
-            {agentEnabled
-              ? "Active — automatically cutting to the live action."
-              : "Off — manual operator control only."}
+            {sportMode ? `${sportMode} · ` : ""}
+            {suspended
+              ? "Manual override — automation paused until you resume."
+              : agentEnabled
+                ? "Active — automatically cutting to the live action."
+                : "Off — manual operator control only."}
           </p>
         </div>
-        <button
-          type="button"
-          className={`agent-toggle ${agentEnabled ? "on" : "off"}`}
-          aria-pressed={agentEnabled}
-          disabled={togglingAgent}
-          onClick={toggleAgent}
-        >
-          <span className="agent-toggle-knob" />
-          <span className="agent-toggle-label">{agentEnabled ? "ON" : "OFF"}</span>
-        </button>
+        <div className="controls-row">
+          {suspended ? (
+            <button type="button" className="take-button" disabled={togglingAgent} onClick={resumeAutomation}>
+              Resume
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className={`agent-toggle ${agentEnabled && !suspended ? "on" : "off"}`}
+            aria-pressed={agentEnabled && !suspended}
+            disabled={togglingAgent}
+            onClick={toggleAgent}
+          >
+            <span className="agent-toggle-knob" />
+            <span className="agent-toggle-label">
+              {suspended ? "HOLD" : agentEnabled ? "ON" : "OFF"}
+            </span>
+          </button>
+        </div>
       </div>
       <h2>Operator override (control bus)</h2>
       <div className="controls-row">

@@ -1,0 +1,83 @@
+{
+  "examples": [
+    {
+      "kind": "heartbeat",
+      "match_id": "friendly-2026-08-22",
+      "timestamp_ms": 1755860000000,
+      "sequence": 1,
+      "period": 1,
+      "clock_mmss": "12:41",
+      "home_score": 0,
+      "away_score": 0,
+      "source": "structured",
+      "confidence": 1.0
+    },
+    {
+      "kind": "event",
+      "revision": "start",
+      "event_id": "evt-foul-1",
+      "correlation_id": "setpiece-14",
+      "match_id": "friendly-2026-08-22",
+      "event_type": "foul",
+      "phase": "setup",
+      "timestamp_ms": 1755860001400,
+      "sequence": 2,
+      "confidence": 0.86,
+      "source": "structured",
+      "team": "home",
+      "player": "14",
+      "zone": "attacking_third",
+      "ball": { "x": 0.72, "y": 0.41 },
+      "action": "late_challenge",
+      "evidence": ["whistle", "player_down"]
+    },
+    {
+      "kind": "event",
+      "revision": "update",
+      "event_id": "evt-fk-1",
+      "correlation_id": "setpiece-14",
+      "match_id": "friendly-2026-08-22",
+      "event_type": "free_kick",
+      "phase": "setup",
+      "timestamp_ms": 1755860004200,
+      "sequence": 3,
+      "confidence": 0.91,
+      "source": "structured",
+      "team": "home",
+      "zone": "attacking_third",
+      "ball": { "x": 0.74, "y": 0.38 },
+      "action": "wall_forming",
+      "evidence": ["restart_mark", "wall"]
+    },
+    {
+      "kind": "event",
+      "revision": "update",
+      "event_id": "evt-fk-1",
+      "correlation_id": "setpiece-14",
+      "match_id": "friendly-2026-08-22",
+      "event_type": "free_kick",
+      "phase": "execution",
+      "timestamp_ms": 1755860011000,
+      "sequence": 4,
+      "confidence": 0.93,
+      "team": "home",
+      "zone": "attacking_third",
+      "ball": { "x": 0.88, "y": 0.48 },
+      "action": "shot"
+    },
+    {
+      "kind": "event",
+      "revision": "end",
+      "event_id": "evt-fk-1",
+      "correlation_id": "setpiece-14",
+      "match_id": "friendly-2026-08-22",
+      "event_type": "free_kick",
+      "phase": "follow_through",
+      "timestamp_ms": 1755860014200,
+      "sequence": 5,
+      "confidence": 0.9,
+      "action": "saved",
+      "evidence": ["goalkeeper_save", "open_play_resume"]
+    }
+  ]
+}

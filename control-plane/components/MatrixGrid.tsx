@@ -1,7 +1,7 @@
 "use client";
 
 import { previewUrl } from "@/lib/api";
-import type { InputSlot, OutputSlot } from "@/lib/types";
+import type { InputSlot, OutputSlot, SoccerCameraRole } from "@/lib/types";
 
 function teamTag(team: string | null) {
   if (!team) return null;
@@ -19,6 +19,7 @@ export function MatrixGrid({
   takeStatus,
   onSelectInput,
   onTakeInput,
+  soccerCameras,
 }: {
   inputs: InputSlot[];
   programInput: string | null;
@@ -29,6 +30,7 @@ export function MatrixGrid({
   takeStatus: string | null;
   onSelectInput: (inputId: string) => void;
   onTakeInput: (inputId: string) => void;
+  soccerCameras?: Record<string, SoccerCameraRole>;
 }) {
   return (
     <div className="panel">
@@ -78,6 +80,14 @@ export function MatrixGrid({
                 <span className="tag">{slot.state}</span>
                 {slot.protocol ? <span className="tag">{slot.protocol}</span> : null}
                 {isProgram ? <span className="tag" style={{ color: "#f85149" }}>ON AIR</span> : null}
+                {soccerCameras?.[slot.id] ? (
+                  <span className="tag">
+                    {soccerCameras[slot.id].role} {(soccerCameras[slot.id].confidence * 100).toFixed(0)}%
+                    {soccerCameras[slot.id].score ? ` · ${soccerCameras[slot.id].score.toFixed(0)}` : ""}
+                  </span>
+                ) : slot.role ? (
+                  <span className="tag">{slot.role}</span>
+                ) : null}
               </div>
               {isSelected ? (
                 <div className="take-row">

@@ -69,3 +69,29 @@ first production slice is built on.
 
 - The matrix is always at least 11 inputs by 11 outputs. Slots exist even when
   inactive; the first slice activates a subset.
+
+## Soccer director
+
+- Soccer is a sport mode on the production matrix, not a replacement of the
+  legacy CS2 YAML/vision CLI.
+- Structured soccer JSON is authoritative while fresh. Local ONNX/video
+  inference is fallback only and stays in shadow mode until a model manifest
+  passes configured evaluation gates.
+- `input_01` is pinned as the lead camera. There is no soccer idle rotation.
+- Special events are foul, free kick, penalty, corner, and burst attack.
+  Ordinary passes never become director events.
+- Operator manual/take/emergency routes persist as `manual_suspended` (with a
+  who/why/when record) until an explicit resume (`POST /api/agent
+  {"enabled": true}`).
+- Freshness is enforced at the edge: the receiver rejects stale, future-skewed,
+  malformed, and out-of-order payloads (422 on the API), so fusion treats every
+  accepted revision as proof the feed is alive.
+- Fail-safe over coverage: if both sources go dark mid-event the director stops
+  cutting, fusion winds the event down (`source_lost`), and the program returns
+  to `input_01`. Structured events below the confidence gate are ignored except
+  `end` revisions, which are always honored.
+- Shadow-mode CV updates camera roles and health/freshness telemetry but can
+  never gain routing authority or create events (`fallback_reason:
+  vision_shadow`), enforced in both the vision agent and fusion.
+- `sport_mode` is switchable at runtime (`POST /api/sport`, `serve --sport`),
+  persisted non-destructively in the runtime config.

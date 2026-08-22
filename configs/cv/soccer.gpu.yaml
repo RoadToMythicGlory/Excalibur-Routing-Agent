@@ -1,0 +1,6 @@
+profile: gpu
+width: 540
+fps: 6.0
+batch: 4
+provider: CUDAExecutionProvider
+stagger: false

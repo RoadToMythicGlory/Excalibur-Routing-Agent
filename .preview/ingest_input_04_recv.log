@@ -1,0 +1,80 @@
+
+=== spawn 1782131513353 ===
+[in#0/mpegts @ 000001d069a9e540] Error during demuxing: I/O error
+
+=== spawn 1782131600643 ===
+[in#0/mpegts @ 000002b2a5e7e540] Error during demuxing: I/O error
+
+=== spawn 1782131680177 ===
+[mpegts @ 000002741a3a7680] Could not find codec parameters for stream 1 (Audio: aac ([15][0][0][0] / 0x000F), 0 channels, fltp): unspecified sample rate
+Consider increasing the value for the 'analyzeduration' (0) and 'probesize' (5000000) options
+[in#0/mpegts @ 000002741a38e540] Error during demuxing: I/O error
+[out#0/mpegts @ 000002741a38e240] Output file is empty, nothing was encoded
+
+=== spawn 1782131686460 ===
+[in#0 @ 0000016da3dce540] Error opening input: I/O error
+Error opening input file srt://0.0.0.0:20001?mode=listener&latency=200.
+Error opening input files: I/O error
+
+=== spawn 1782131693823 ===
+[in#0 @ 00000169d1ade540] Error opening input: I/O error
+Error opening input file srt://0.0.0.0:20001?mode=listener&latency=200.
+Error opening input files: I/O error
+
+=== spawn 1782131700409 ===
+[in#0 @ 000002ab48dee540] Error opening input: I/O error
+Error opening input file srt://0.0.0.0:20001?mode=listener&latency=200.
+Error opening input files: I/O error
+
+=== spawn 1782131706959 ===
+[in#0 @ 0000024fb69de540] Error opening input: I/O error
+Error opening input file srt://0.0.0.0:20001?mode=listener&latency=200.
+Error opening input files: I/O error
+
+=== spawn 1782131713511 ===
+[in#0 @ 000001a29bbfe540] Error opening input: I/O error
+Error opening input file srt://0.0.0.0:20001?mode=listener&latency=200.
+Error opening input files: I/O error
+
+=== spawn 1782131720323 ===
+[in#0/mpegts @ 0000025f675de540] Error during demuxing: I/O error
+
+=== spawn 1782131772791 ===
+[in#0 @ 0000022a08b6e540] Error opening input: I/O error
+Error opening input file srt://0.0.0.0:20001?mode=listener&latency=200.
+Error opening input files: I/O error
+
+=== spawn 1782131780427 ===
+[in#0/mpegts @ 0000016bd0d5e540] Error during demuxing: I/O error
+
+=== spawn 1782131815340 ===
+[in#0 @ 0000014b1a3ae540] Error opening input: I/O error
+Error opening input file srt://0.0.0.0:20001?mode=listener&latency=200.
+Error opening input files: I/O error
+
+=== spawn 1782131822168 ===
+[in#0 @ 000001ef633fe540] Error opening input: I/O error
+Error opening input file srt://0.0.0.0:20001?mode=listener&latency=200.
+Error opening input files: I/O error
+
+=== spawn 1782131829753 ===
+[in#0 @ 000001d26246e540] Error opening input: I/O error
+Error opening input file srt://0.0.0.0:20001?mode=listener&latency=200.
+Error opening input files: I/O error
+
+=== spawn 1782131836575 ===
+[in#0 @ 0000023411ace540] Error opening input: I/O error
+Error opening input file srt://0.0.0.0:20001?mode=listener&latency=200.
+Error opening input files: I/O error
+
+=== spawn 1782131843127 ===
+[mpegts @ 000002777a977680] Could not find codec parameters for stream 1 (Audio: aac ([15][0][0][0] / 0x000F), 0 channels, fltp): unspecified sample rate
+Consider increasing the value for the 'analyzeduration' (0) and 'probesize' (5000000) options
+[in#0/mpegts @ 000002777a95e540] Error during demuxing: I/O error
+[out#0/mpegts @ 000002777a993980] Output file is empty, nothing was encoded
+
+=== spawn 1782131849180 ===
+[in#0/mpegts @ 00000205b3f6e540] Error during demuxing: I/O error
+[out#0/mpegts @ 00000205b3f6e240] Output file is empty, nothing was encoded
+
+=== spawn 1782131858634 ===

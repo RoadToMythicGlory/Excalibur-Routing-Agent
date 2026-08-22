@@ -53,6 +53,52 @@ export interface StoryEvent {
   affected_players: string[];
   recommended_inputs: string[];
   evidence: string[];
+  lifecycle?: string | null;
+  source?: string | null;
+  correlation_id?: string | null;
+  phase?: string | null;
+}
+
+export interface SoccerCameraRole {
+  role: string;
+  confidence: number;
+  source: string;
+  score: number;
+}
+
+export interface SoccerEventSnapshot {
+  event_id: string;
+  correlation_id: string;
+  type: string;
+  lifecycle: string;
+  phase: string;
+  source: string;
+  confidence: number;
+  age_ms: number;
+  zone: string;
+  team: string | null;
+  player: string | null;
+  evidence: string[];
+}
+
+export interface SoccerSnapshot {
+  match_id: string | null;
+  authority: string;
+  heartbeat_fresh: boolean;
+  vision_fresh: boolean;
+  fallback_reason: string | null;
+  profile_version: string;
+  model_version: string | null;
+  event: SoccerEventSnapshot | null;
+  cameras: Record<string, SoccerCameraRole>;
+  director_mode: string;
+  main_input: string;
+  cv_profile: string;
+  vision_degraded: boolean;
+  vision_routing_allowed: boolean;
+  rejected?: number;
+  suspension?: { by: string; reason: string; at: number } | null;
+  warnings: string[];
 }
 
 export interface AuditRow {
@@ -97,6 +143,10 @@ export interface MatchSnapshot {
 export interface MatrixSnapshot {
   media_enabled: boolean;
   agent_enabled: boolean;
+  sport_mode?: string;
+  director_mode?: string;
+  main_input?: string;
+  soccer?: SoccerSnapshot | null;
   program: ProgramStatus;
   matrix: {
     inputs: InputSlot[];

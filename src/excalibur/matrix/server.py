@@ -26,6 +26,7 @@ class MatrixRequestHandler(BaseHTTPRequestHandler):
       GET  /api/config        -> editable input/output configuration
       GET  /api/files         -> browse backend directories/media files (picker)
       POST /gsi               -> CS2 Game State Integration payload sink
+      POST /api/soccer/events -> soccer structured heartbeat / event sink
       POST /api/control       -> operator command (manual cut, lock, hold, emergency)
       POST /api/config/input  -> set input metadata (identity, scene, source)
       POST /api/config/matrix -> set input/output slot counts
@@ -114,6 +115,9 @@ class MatrixRequestHandler(BaseHTTPRequestHandler):
             self.server.service.feed_gsi(payload)
             self._send(200, {"status": "accepted"})
             return
+        if self.path.startswith("/api/soccer/events"):
+            self._handle_soccer_events(payload)
+            return
         if self.path.startswith("/api/control"):
             decision = self._handle_control(payload)
             self._send(200, decision)
@@ -130,14 +134,49 @@ class MatrixRequestHandler(BaseHTTPRequestHandler):
         if self.path.startswith("/api/agent"):
             self._handle_agent_toggle(payload)
             return
+        if self.path.startswith("/api/sport"):
+            self._handle_sport_mode(payload)
+            return
         self._send(404, {"error": "not_found"})
+
+    def _handle_soccer_events(self, payload: dict) -> None:
+        try:
+            snapshot = self.server.service.feed_soccer_events(payload)
+        except RuntimeError as error:
+            self._send(409, {"error": str(error)})
+            return
+        if not snapshot.pop("accepted", True):
+            self._send(422, {"status": "rejected", "soccer": snapshot})
+            return
+        self._send(200, {"status": "accepted", "soccer": snapshot})
+
+    def _handle_sport_mode(self, payload: dict) -> None:
+        sport = payload.get("sport_mode")
+        if not sport:
+            self._send(400, {"error": "missing_sport_mode"})
+            return
+        try:
+            result = self.server.service.set_sport_mode(
+                str(sport), game_profile=payload.get("game_profile")
+            )
+        except (ValueError, FileNotFoundError) as error:
+            self._send(400, {"error": str(error)})
+            return
+        self._send(200, {"status": "ok", **result})
 
     def _handle_agent_toggle(self, payload: dict) -> None:
         if "enabled" not in payload:
             self._send(400, {"error": "missing_enabled"})
             return
         enabled = self.server.service.set_agent_enabled(payload.get("enabled"))
-        self._send(200, {"status": "ok", "agent_enabled": enabled})
+        self._send(
+            200,
+            {
+                "status": "ok",
+                "agent_enabled": enabled,
+                "director_mode": self.server.service.director_mode.value,
+            },
+        )
 
     def _handle_matrix_config(self, payload: dict) -> None:
         try:

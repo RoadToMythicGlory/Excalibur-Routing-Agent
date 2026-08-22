@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://excalibur.local/schemas/soccer-event.schema.json",
+  "title": "Excalibur Soccer Structured Feed",
+  "oneOf": [
+    { "$ref": "#/$defs/heartbeat" },
+    { "$ref": "#/$defs/eventRevision" }
+  ],
+  "$defs": {
+    "eventType": {
+      "enum": ["foul", "free_kick", "penalty_kick", "corner_kick", "burst_attack"]
+    },
+    "revisionKind": { "enum": ["start", "update", "end"] },
+    "phase": { "enum": ["setup", "execution", "follow_through"] },
+    "pitchZone": {
+      "enum": [
+        "own_box",
+        "own_third",
+        "midfield",
+        "attacking_third",
+        "attacking_box",
+        "left_corner",
+        "right_corner",
+        "penalty_spot",
+        "unknown"
+      ]
+    },
+    "xy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y"],
+      "properties": {
+        "x": { "type": "number", "minimum": 0, "maximum": 1 },
+        "y": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "heartbeat": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "match_id", "timestamp_ms", "sequence"],
+      "properties": {
+        "kind": { "const": "heartbeat" },
+        "match_id": { "type": "string", "minLength": 1 },
+        "timestamp_ms": { "type": "number" },
+        "sequence": { "type": "integer", "minimum": 0 },
+        "period": { "type": ["integer", "null"] },
+        "clock_mmss": { "type": ["string", "null"] },
+        "home_score": { "type": ["integer", "null"] },
+        "away_score": { "type": ["integer", "null"] },
+        "source": { "type": "string", "default": "structured" },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1, "default": 1 }
+      }
+    },
+    "eventRevision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "revision",
+        "event_id",
+        "match_id",
+        "event_type",
+        "timestamp_ms",
+        "sequence",
+        "confidence"
+      ],
+      "properties": {
+        "kind": { "const": "event" },
+        "revision": { "$ref": "#/$defs/revisionKind" },
+        "event_id": { "type": "string", "minLength": 1 },
+        "correlation_id": { "type": ["string", "null"] },
+        "match_id": { "type": "string", "minLength": 1 },
+        "event_type": { "$ref": "#/$defs/eventType" },
+        "phase": { "$ref": "#/$defs/phase" },
+        "timestamp_ms": { "type": "number" },
+        "sequence": { "type": "integer", "minimum": 0 },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "source": { "type": "string", "default": "structured" },
+        "team": { "type": ["string", "null"] },
+        "opponent": { "type": ["string", "null"] },
+        "player": { "type": ["string", "null"] },
+        "zone": { "$ref": "#/$defs/pitchZone" },
+        "ball": { "$ref": "#/$defs/xy" },
+        "action": { "type": ["string", "null"] },
+        "evidence": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "recommended_inputs": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}

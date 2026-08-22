@@ -57,6 +57,16 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="MEDIA_CONFIG",
         help="Path to a media config YAML to enable real FFmpeg/SRT ingest.",
     )
+    srv.add_argument(
+        "--sport",
+        choices=["cs2", "soccer"],
+        help="Select the active sport director (persisted; default: last configured).",
+    )
+    srv.add_argument(
+        "--game-profile",
+        metavar="PROFILE_JSON",
+        help="Path to the sport behavior profile (e.g. configs/games/soccer.json).",
+    )
 
     parser.add_argument("--verbose", "-v", action="store_true")
     return parser
@@ -76,7 +86,11 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "serve":
-        service = build_default_service(obs_dry_run=not args.live)
+        service = build_default_service(
+            obs_dry_run=not args.live,
+            sport_mode=args.sport,
+            game_profile=args.game_profile,
+        )
         service.connect_obs()
         if args.media:
             inputs, preview_dir, freshness_ms = load_media_inputs(args.media)

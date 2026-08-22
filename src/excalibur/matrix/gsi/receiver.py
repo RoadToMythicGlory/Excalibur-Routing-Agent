@@ -24,6 +24,8 @@ GRENADE_WEAPONS = {
     "weapon_decoy",
 }
 LOW_HEALTH = 35
+# GSI reports flash intensity 0-255; above this the player is effectively blind.
+FULL_FLASH = 200
 
 
 class GsiReceiver:
@@ -125,6 +127,7 @@ class GsiReceiver:
             if weapon.get("state") == "active":
                 active_weapon = name
 
+        match_stats = raw.get("match_stats", {}) or {}
         slot = self.steam_to_input.get(steamid, steamid)
         return PlayerState(
             slot=slot,
@@ -138,18 +141,27 @@ class GsiReceiver:
             active_weapon=active_weapon,
             weapons=weapons,
             money=int(state_block.get("money", 0)),
+            round_kills=int(state_block.get("round_kills", 0)),
+            round_kill_headshots=int(state_block.get("round_killhs", 0)),
+            match_kills=int(match_stats.get("kills", 0)),
             input_id=self.steam_to_input.get(steamid),
         )
 
     def _normalize_bomb(self, payload: dict, round_block: dict) -> BombState:
         bomb_block = payload.get("bomb")
         if bomb_block:
+            bomb_player = bomb_block.get("player")
             return BombState(
                 state=bomb_block.get("state", "carried"),
                 site=bomb_block.get("site"),
                 countdown_ms=(
                     float(bomb_block["countdown"]) * 1000.0
                     if bomb_block.get("countdown") is not None
+                    else None
+                ),
+                player_slot=(
+                    self.steam_to_input.get(str(bomb_player), str(bomb_player))
+                    if bomb_player
                     else None
                 ),
             )
@@ -233,6 +245,40 @@ class GsiReceiver:
                     )
                 )
 
+            if player.flashed >= FULL_FLASH and (
+                prev is None or prev.flashed < FULL_FLASH
+            ):
+                events.append(
+                    GameStateEvent(
+                        type="player_flashed",
+                        player_slot=slot,
+                        data={"flashed": player.flashed},
+                        round_id=new.round_id,
+                    )
+                )
+
+            # Kills are the strongest cut signal a broadcast has. The event
+            # carries the KILLER's slot (unlike player_death, which carries the
+            # victim) so the director can cut to the player who just earned the
+            # moment.
+            prev_kills = prev.round_kills if prev is not None else 0
+            if player.round_kills > prev_kills:
+                prev_hs = prev.round_kill_headshots if prev is not None else 0
+                events.append(
+                    GameStateEvent(
+                        type="player_kill",
+                        player_slot=slot,
+                        data={
+                            "round_kills": player.round_kills,
+                            "new_kills": player.round_kills - prev_kills,
+                            "headshot": player.round_kill_headshots > prev_hs,
+                            "weapon": player.active_weapon,
+                            "team": player.team,
+                        },
+                        round_id=new.round_id,
+                    )
+                )
+
         old_bomb = old.bomb.state if old and old.round_id == new.round_id else None
         if new.bomb.state != old_bomb and new.bomb.state in (
             "planted",
@@ -243,6 +289,7 @@ class GsiReceiver:
             events.append(
                 GameStateEvent(
                     type=f"bomb_{new.bomb.state}",
+                    player_slot=new.bomb.player_slot,
                     data={"site": new.bomb.site},
                     round_id=new.round_id,
                 )

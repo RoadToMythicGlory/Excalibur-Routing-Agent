@@ -85,6 +85,15 @@ class MatrixConfigStore:
             # Whether the AI director is allowed to drive routing. When False the
             # agent is fully passive and only operator commands move the program.
             "agent_enabled": True,
+            # Sport isolation: cs2 keeps the existing GSI director; soccer uses
+            # the soccer profile, event feed, and return-to-main planner.
+            "sport_mode": "cs2",
+            "game_profile": None,
+            "director_mode": "automatic",
+            # Who/why/when for the last manual suspension; cleared on resume.
+            "suspension": None,
+            "main_input": "input_01",
+            "cv_profile": "auto",
             "inputs": {},
             # Optional: also expose the program feed as a Windows virtual-camera
             # device (akvirtualcamera) so OBS can pick "Excalibur" from the
@@ -122,6 +131,20 @@ class MatrixConfigStore:
                 self.data["agent_enabled"] = _coerce_bool(
                     loaded.get("agent_enabled", True)
                 )
+                self.data["sport_mode"] = _coerce_sport(loaded.get("sport_mode"))
+                self.data["game_profile"] = loaded.get("game_profile")
+                self.data["director_mode"] = _coerce_director_mode(
+                    loaded.get("director_mode"),
+                    self.data["agent_enabled"],
+                )
+                suspension = loaded.get("suspension")
+                self.data["suspension"] = (
+                    dict(suspension) if isinstance(suspension, dict) else None
+                )
+                self.data["main_input"] = str(
+                    loaded.get("main_input") or "input_01"
+                )
+                self.data["cv_profile"] = _coerce_cv_profile(loaded.get("cv_profile"))
                 self.data["inputs"] = loaded.get("inputs", {}) or {}
                 vcam = dict(DEFAULT_VIRTUALCAM)
                 loaded_vcam = loaded.get("virtualcam")
@@ -179,8 +202,59 @@ class MatrixConfigStore:
     def set_agent_enabled(self, enabled: bool) -> bool:
         value = _coerce_bool(enabled)
         self.data["agent_enabled"] = value
+        self.data["director_mode"] = "automatic" if value else "disabled"
         self.save()
         return value
+
+    @property
+    def sport_mode(self) -> str:
+        return _coerce_sport(self.data.get("sport_mode"))
+
+    def set_sport_mode(self, sport: str) -> str:
+        value = _coerce_sport(sport)
+        self.data["sport_mode"] = value
+        self.save()
+        return value
+
+    @property
+    def game_profile(self) -> str | None:
+        value = self.data.get("game_profile")
+        return str(value) if value else None
+
+    def set_game_profile(self, path: str | None) -> str | None:
+        self.data["game_profile"] = path
+        self.save()
+        return path
+
+    @property
+    def director_mode(self) -> str:
+        return _coerce_director_mode(
+            self.data.get("director_mode"), self.agent_enabled
+        )
+
+    def set_director_mode(self, mode: str) -> str:
+        value = _coerce_director_mode(mode, self.agent_enabled)
+        self.data["director_mode"] = value
+        self.data["agent_enabled"] = value != "disabled"
+        self.save()
+        return value
+
+    @property
+    def suspension(self) -> dict | None:
+        value = self.data.get("suspension")
+        return dict(value) if isinstance(value, dict) else None
+
+    def set_suspension(self, info: dict | None) -> None:
+        self.data["suspension"] = dict(info) if isinstance(info, dict) else None
+        self.save()
+
+    @property
+    def main_input(self) -> str:
+        return str(self.data.get("main_input") or "input_01")
+
+    @property
+    def cv_profile(self) -> str:
+        return _coerce_cv_profile(self.data.get("cv_profile"))
 
     @property
     def program_output(self) -> str:
@@ -278,6 +352,28 @@ def _coerce_program_output(fields: dict) -> dict:
             if text:
                 clean[key] = text
     return clean
+
+
+def _coerce_sport(value: object) -> str:
+    if isinstance(value, str) and value.strip().lower() in ("cs2", "soccer"):
+        return value.strip().lower()
+    return "cs2"
+
+
+def _coerce_director_mode(value: object, agent_enabled: bool) -> str:
+    if isinstance(value, str) and value.strip().lower() in (
+        "automatic",
+        "manual_suspended",
+        "disabled",
+    ):
+        return value.strip().lower()
+    return "automatic" if agent_enabled else "disabled"
+
+
+def _coerce_cv_profile(value: object) -> str:
+    if isinstance(value, str) and value.strip().lower() in ("cpu", "gpu", "auto"):
+        return value.strip().lower()
+    return "auto"
 
 
 def _coerce_count(value: object, default: int) -> int:

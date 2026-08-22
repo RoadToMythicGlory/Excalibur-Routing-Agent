@@ -1,0 +1,178 @@
+{
+  "sport": "soccer",
+  "version": "1.0.0",
+  "game": "Soccer",
+  "main_input": "input_01",
+  "program_output": "output_01",
+  "sources": {
+    "structured_heartbeat_ms": 1000,
+    "structured_freshness_ms": 1500,
+    "structured_stale_ms": 2500,
+    "vision_freshness_ms": 800,
+    "max_future_skew_ms": 400
+  },
+  "inference": {
+    "default_profile": "auto",
+    "cpu": {
+      "width": 320,
+      "fps": 2.5,
+      "batch": 1,
+      "provider": "CPUExecutionProvider",
+      "stagger": true
+    },
+    "gpu": {
+      "width": 540,
+      "fps": 6.0,
+      "batch": 4,
+      "provider": "CUDAExecutionProvider",
+      "stagger": false
+    },
+    "shadow_until_validated": true,
+    "model_manifest": null
+  },
+  "gating": {
+    "min_event_confidence": 0.62,
+    "min_role_confidence": 0.55,
+    "start_debounce_ms": 350,
+    "end_debounce_ms": 800,
+    "failsafe_max_event_ms": 25000,
+    "cut_cooldown_ms": 700,
+    "min_dwell_ms": 1200,
+    "score_margin": 12,
+    "ordinary_pass_not_event": true
+  },
+  "events": {
+    "foul": {
+      "priority": 70,
+      "hold_ms": 1400,
+      "ttl_ms": 2500,
+      "interrupt": false,
+      "max_duration_ms": 18000,
+      "phases": {
+        "setup": {
+          "preferred_roles": ["sideline_tight", "reaction", "main_wide"],
+          "fallback_roles": ["tactical_high", "main_wide"]
+        },
+        "execution": {
+          "preferred_roles": ["sideline_tight", "main_wide"],
+          "fallback_roles": ["tactical_high", "main_wide"]
+        },
+        "follow_through": {
+          "preferred_roles": ["main_wide", "tactical_high"],
+          "fallback_roles": ["main_wide"]
+        }
+      }
+    },
+    "free_kick": {
+      "priority": 78,
+      "hold_ms": 1600,
+      "ttl_ms": 3000,
+      "interrupt": false,
+      "max_duration_ms": 22000,
+      "phases": {
+        "setup": {
+          "preferred_roles": ["sideline_tight", "reaction", "main_wide"],
+          "fallback_roles": ["tactical_high", "main_wide"]
+        },
+        "execution": {
+          "preferred_roles": ["goal_line", "behind_goal_left", "behind_goal_right", "main_wide"],
+          "fallback_roles": ["tactical_high", "main_wide"]
+        },
+        "follow_through": {
+          "preferred_roles": ["goal_line", "sideline_tight", "main_wide"],
+          "fallback_roles": ["main_wide"]
+        }
+      }
+    },
+    "penalty_kick": {
+      "priority": 94,
+      "hold_ms": 2000,
+      "ttl_ms": 4000,
+      "interrupt": true,
+      "max_duration_ms": 30000,
+      "phases": {
+        "setup": {
+          "preferred_roles": ["sideline_tight", "reaction", "behind_goal_left", "behind_goal_right"],
+          "fallback_roles": ["goal_line", "main_wide"]
+        },
+        "execution": {
+          "preferred_roles": ["goal_line", "behind_goal_left", "behind_goal_right"],
+          "fallback_roles": ["sideline_tight", "main_wide"]
+        },
+        "follow_through": {
+          "preferred_roles": ["goal_line", "sideline_tight", "reaction"],
+          "fallback_roles": ["main_wide"]
+        }
+      }
+    },
+    "corner_kick": {
+      "priority": 80,
+      "hold_ms": 1600,
+      "ttl_ms": 3000,
+      "interrupt": false,
+      "max_duration_ms": 20000,
+      "phases": {
+        "setup": {
+          "preferred_roles": ["sideline_tight", "tactical_high", "main_wide"],
+          "fallback_roles": ["main_wide"]
+        },
+        "execution": {
+          "preferred_roles": ["goal_line", "behind_goal_left", "behind_goal_right", "tactical_high"],
+          "fallback_roles": ["sideline_tight", "main_wide"]
+        },
+        "follow_through": {
+          "preferred_roles": ["goal_line", "sideline_tight", "main_wide"],
+          "fallback_roles": ["main_wide"]
+        }
+      }
+    },
+    "burst_attack": {
+      "priority": 84,
+      "hold_ms": 1200,
+      "ttl_ms": 2200,
+      "interrupt": false,
+      "max_duration_ms": 16000,
+      "phases": {
+        "setup": {
+          "preferred_roles": ["tactical_high", "main_wide"],
+          "fallback_roles": ["main_wide"]
+        },
+        "execution": {
+          "preferred_roles": ["tactical_high", "sideline_tight", "main_wide"],
+          "fallback_roles": ["main_wide"]
+        },
+        "follow_through": {
+          "preferred_roles": ["goal_line", "sideline_tight", "tactical_high"],
+          "fallback_roles": ["main_wide"]
+        }
+      }
+    }
+  },
+  "camera_roles": [
+    { "id": "main_wide", "label": "Lead / Camera 1", "pin_main": true },
+    { "id": "tactical_high", "label": "Tactical high-wide", "pin_main": false },
+    { "id": "sideline_tight", "label": "Sideline tight", "pin_main": false },
+    { "id": "goal_line", "label": "Goal line", "pin_main": false },
+    { "id": "behind_goal_left", "label": "Behind goal left", "pin_main": false },
+    { "id": "behind_goal_right", "label": "Behind goal right", "pin_main": false },
+    { "id": "reaction", "label": "Reaction / bench", "pin_main": false },
+    { "id": "unknown", "label": "Unknown / inferred later", "pin_main": false }
+  ],
+  "return_to_main": {
+    "after_end_ms": 400,
+    "priority": 20,
+    "confidence": 0.95
+  },
+  "manual_suspension": {
+    "on_operator_route": true,
+    "persist": true,
+    "resume_action": "explicit_resume"
+  },
+  "evaluation_gates": {
+    "min_precision": 0.8,
+    "min_recall": 0.7,
+    "max_false_events_per_match": 4,
+    "max_inference_ms": 180,
+    "max_switch_rate_per_min": 18
+  }
+}

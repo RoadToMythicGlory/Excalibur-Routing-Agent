@@ -10,3 +10,8 @@ control-plane/.next/
 .env.*
 !.env.example
 !.env.*.example
+
+assets/datasets/
+src/excalibur/cv/models/*.onnx
+src/excalibur/cv/models/*.pt
+src/excalibur/cv/models/*.manifest.json
