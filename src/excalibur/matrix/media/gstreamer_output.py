@@ -30,7 +30,11 @@ from pathlib import Path
 
 from excalibur.matrix.clock import now_ms
 from excalibur.matrix.media import media_core_protocol as proto
-from excalibur.matrix.media.gst_probe import describe_environment
+from excalibur.matrix.media.gst_probe import (
+    describe_environment,
+    plugins_good_version,
+    vulnerable_to_cve_2026_119610,
+)
 from excalibur.matrix.media.ingest import MediaInput
 
 logger = logging.getLogger(__name__)
@@ -236,6 +240,14 @@ class GstProgramOutputManager:
                 "GStreamer program output cannot start.",
                 MEDIA_CORE_ENV,
             )
+            return False
+        if vulnerable_to_cve_2026_119610():
+            version = ".".join(map(str, plugins_good_version() or ()))
+            self._last_error = (
+                f"gst-plugins-good {version} is vulnerable to CVE-2026-119610; "
+                "install GStreamer >= 1.28.9"
+            )
+            logger.error("Refusing to start media-core: %s", self._last_error)
             return False
         self.binary_path = binary
         self._kill()

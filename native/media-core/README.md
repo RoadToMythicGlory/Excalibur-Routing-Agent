@@ -19,6 +19,10 @@ See `../../.cursor/plans/` (the GStreamer Output plan) for the design rationale.
 
 ## Runtime requirements (Windows)
 
+> **Minimum GStreamer 1.28.9.** Older gst-plugins-good builds are vulnerable to
+> CVE-2026-119610 (out-of-bounds read in `rtph264depay`, reachable from RTSP
+> inputs). `media-core` refuses to start on them, and Excalibur will not spawn it.
+
 Install the **MSVC 64-bit** GStreamer packages from
 <https://gstreamer.freedesktop.org/download/> (both are needed to build):
 
