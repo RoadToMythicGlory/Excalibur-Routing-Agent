@@ -1,0 +1,113 @@
+name: media-core (Windows)
+
+on:
+  pull_request:
+    paths:
+      - "native/media-core/**"
+      - ".github/workflows/media-core-windows.yml"
+  push:
+    branches: [main]
+    paths:
+      - "native/media-core/**"
+      - ".github/workflows/media-core-windows.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: media-core-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 120
+    env:
+      # >= 1.28.9 required (CVE-2026-119610). Keep in sync with the README.
+      GST_VERSION: "1.28.9"
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Cache GStreamer installers
+        uses: actions/cache@v4
+        with:
+          path: gst-msi
+          key: gstreamer-msvc-x86_64-${{ env.GST_VERSION }}
+
+      - name: Download GStreamer MSVC installers
+        run: |
+          set -euo pipefail
+          mkdir -p gst-msi
+          base="https://gstreamer.freedesktop.org/data/pkg/windows/${GST_VERSION}/msvc"
+          for name in "gstreamer-1.0-msvc-x86_64-${GST_VERSION}.msi" \
+                      "gstreamer-1.0-devel-msvc-x86_64-${GST_VERSION}.msi"; do
+            [[ -s "gst-msi/$name.ok" ]] && { echo "cached: $name"; continue; }
+            attempt=0
+            # Upstream drops long transfers and returns 503s; resume until done.
+            until curl --fail --location --http1.1 --retry 3 --retry-all-errors \
+                --retry-delay 10 --continue-at - --output "gst-msi/$name" "$base/$name"; do
+              attempt=$((attempt + 1))
+              (( attempt < 25 )) || { echo "ERROR: could not download $name" >&2; exit 1; }
+              echo "Interrupted ($attempt); resuming in 15s…"; sleep 15
+            done
+            sum="$(curl --fail --location --http1.1 --retry 8 --retry-all-errors \
+                --retry-delay 15 "$base/$name.sha256sum" | awk '{print $1}')"
+            echo "$sum  gst-msi/$name" | sha256sum -c -
+            echo ok > "gst-msi/$name.ok"
+          done
+
+      - name: Install GStreamer
+        shell: pwsh
+        run: |
+          foreach ($msi in Get-ChildItem gst-msi\*.msi) {
+            Write-Host "Installing $($msi.Name)"
+            $p = Start-Process msiexec.exe -Wait -PassThru -ArgumentList `
+              "/i `"$($msi.FullName)`" /qn ADDLOCAL=ALL INSTALLDIR=C:\gstreamer\1.0\msvc_x86_64\"
+            if ($p.ExitCode -ne 0) { throw "msiexec failed for $($msi.Name): $($p.ExitCode)" }
+          }
+          $root = "C:\gstreamer\1.0\msvc_x86_64"
+          "GSTREAMER_1_0_ROOT_MSVC_X86_64=$root\" >> $env:GITHUB_ENV
+          "PKG_CONFIG_PATH=$root\lib\pkgconfig" >> $env:GITHUB_ENV
+          "$root\bin" >> $env:GITHUB_PATH
+
+      - name: Check installed plugins-good version
+        run: gst-inspect-1.0 rtp | grep -E "^\s*Version"
+
+      - name: Configure
+        working-directory: native/media-core
+        run: cmake -S . -B build -DPKG_CONFIG_EXECUTABLE="C:/gstreamer/1.0/msvc_x86_64/bin/pkg-config.exe"
+
+      - name: Build
+        working-directory: native/media-core
+        run: cmake --build build --config Release
+
+      - name: Require the full media-core binary
+        working-directory: native/media-core
+        run: |
+          # CMake silently skips media-core when GStreamer isn't found.
+          test -f build/Release/media-core.exe || { echo "media-core.exe was not built" >&2; exit 1; }
+
+      - name: Unit tests
+        working-directory: native/media-core
+        run: ctest --test-dir build -C Release --output-on-failure
+
+      - name: Startup version gate accepts 1.28.9
+        working-directory: native/media-core
+        shell: pwsh
+        run: |
+          # media-core exits 2 with a "security" error on vulnerable GStreamer.
+          # On 1.28.9 it must get past the gate and wait for commands.
+          $p = Start-Process build\Release\media-core.exe -PassThru -NoNewWindow `
+                 -RedirectStandardOutput gate.out -RedirectStandardError gate.err
+          Start-Sleep -Seconds 5
+          if ($p.HasExited) {
+            Get-Content gate.out, gate.err
+            if ($p.ExitCode -eq 2) { throw "version gate rejected GStreamer $env:GST_VERSION" }
+          } else {
+            Stop-Process -Id $p.Id -Force
+          }
+          if (Select-String -Path gate.out -Pattern '"security"' -Quiet) {
+            throw "media-core reported a security error"
+          }
+          Write-Host "Version gate passed."
