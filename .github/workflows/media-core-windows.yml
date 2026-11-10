@@ -21,8 +21,10 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 120
     env:
-      # >= 1.28.9 required (CVE-2026-119610). Keep in sync with the README.
-      GST_VERSION: "1.28.9"
+      # Newest official Windows build. 1.28.9 (CVE-2026-119610 fix) has no
+      # Windows binaries yet; bump both values when it does.
+      GST_VERSION: "1.28.8"
+      GST_SHA256: "e4c41ee6ee9c6c32a45d198463ec08d79bac3bd5fa58adc93d13fe4a08abc9d9"
     defaults:
       run:
         shell: bash
@@ -56,9 +58,7 @@ jobs:
             (( attempt < 25 )) || { echo "ERROR: could not download $name" >&2; exit 1; }
             echo "Interrupted ($attempt); resuming in 15s…"; sleep 15
           done
-          sum="$(curl --fail --location --http1.1 --retry 8 --retry-all-errors \
-              --retry-delay 15 "$base/$name.sha256sum" | awk '{print $1}')"
-          echo "$sum  gst-installer/$name" | sha256sum -c -
+          echo "$GST_SHA256  gst-installer/$name" | sha256sum -c -
           echo ok > "gst-installer/$name.ok"
 
       - name: Install GStreamer
@@ -101,22 +101,21 @@ jobs:
         working-directory: native/media-core
         run: ctest --test-dir build -C Release --output-on-failure
 
-      - name: Startup version gate accepts 1.28.9
+      - name: Startup CVE-2026-119610 handling
         working-directory: native/media-core
         shell: pwsh
         run: |
-          # media-core exits 2 with a "security" error on vulnerable GStreamer.
-          # On 1.28.9 it must get past the gate and wait for commands.
+          # < 1.28.9: media-core must disable rtph264depay and keep running.
+          # >= 1.28.9: it must start with no mitigation message.
+          New-Item -ItemType File empty.in -Force | Out-Null
           $p = Start-Process build\Release\media-core.exe -PassThru -NoNewWindow `
+                 -RedirectStandardInput empty.in `
                  -RedirectStandardOutput gate.out -RedirectStandardError gate.err
-          Start-Sleep -Seconds 5
-          if ($p.HasExited) {
-            Get-Content gate.out, gate.err
-            if ($p.ExitCode -eq 2) { throw "version gate rejected GStreamer $env:GST_VERSION" }
-          } else {
-            Stop-Process -Id $p.Id -Force
-          }
-          if (Select-String -Path gate.out -Pattern '"security"' -Quiet) {
-            throw "media-core reported a security error"
-          }
-          Write-Host "Version gate passed."
+          if (-not $p.WaitForExit(15000)) { Stop-Process -Id $p.Id -Force }
+          Get-Content gate.out, gate.err
+          if ($p.ExitCode -eq 2) { throw "media-core failed its security check" }
+          $mitigated = Select-String -Path gate.err -Pattern 'rtph264depay disabled' -Quiet
+          $vulnerable = [version]$env:GST_VERSION -lt [version]'1.28.9'
+          if ($vulnerable -and -not $mitigated) { throw "rtph264depay was not disabled on $env:GST_VERSION" }
+          if (-not $vulnerable -and $mitigated) { throw "mitigation applied on fixed $env:GST_VERSION" }
+          Write-Host "CVE-2026-119610 handling OK (mitigated=$mitigated)."

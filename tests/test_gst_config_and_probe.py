@@ -155,21 +155,31 @@ def test_cve_2026_119610_gate(monkeypatch, version, vulnerable):
     assert gst_probe.vulnerable_to_cve_2026_119610() is vulnerable
     env = gst_probe.describe_environment()
     assert env["vulnerable_cve_2026_119610"] is vulnerable
-    if vulnerable:
-        assert env["ready"] is False
+    assert env["rtp_h264_input_disabled"] is vulnerable
+    # Vulnerable builds stay usable: media-core disables rtph264depay itself.
+    assert "ready" in env
     gst_probe.reset_cache()
 
 
-def test_manager_refuses_to_spawn_on_vulnerable_gstreamer(monkeypatch, tmp_path):
-    _fake_inspect(monkeypatch, "1.28.6")
+def test_manager_warns_but_spawns_on_vulnerable_gstreamer(monkeypatch, tmp_path, caplog):
+    _fake_inspect(monkeypatch, "1.28.8")
     manager = GstProgramOutputManager("srt://127.0.0.1:9000")
-    manager.binary_path = str(tmp_path / "media-core")
+    binary = tmp_path / "media-core"
+    binary.write_text("")
+    monkeypatch.setattr(manager, "_resolve_binary", lambda: str(binary), raising=False)
+    manager.binary_path = str(binary)
     spawned = []
-    monkeypatch.setattr(
-        "excalibur.matrix.media.gstreamer_output.subprocess.Popen",
-        lambda *a, **k: spawned.append(a),
-    )
-    assert manager._try_spawn() is False
-    assert spawned == []
-    assert "CVE-2026-119610" in manager.status()["last_error"]
+
+    def _popen(*args, **kwargs):
+        spawned.append(args)
+        raise OSError("stop here")
+
+    monkeypatch.setattr("excalibur.matrix.media.gstreamer_output.subprocess.Popen", _popen)
+    with caplog.at_level("WARNING"):
+        try:
+            manager._try_spawn()
+        except OSError:
+            pass
+    assert spawned, "spawn must still be attempted on a vulnerable install"
+    assert "CVE-2026-119610" in caplog.text
     gst_probe.reset_cache()

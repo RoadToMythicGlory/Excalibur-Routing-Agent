@@ -243,12 +243,12 @@ class GstProgramOutputManager:
             return False
         if vulnerable_to_cve_2026_119610():
             version = ".".join(map(str, plugins_good_version() or ()))
-            self._last_error = (
-                f"gst-plugins-good {version} is vulnerable to CVE-2026-119610; "
-                "install GStreamer >= 1.28.9"
+            logger.warning(
+                "gst-plugins-good %s is vulnerable to CVE-2026-119610; media-core "
+                "disables rtph264depay, so H.264 RTP/RTSP inputs are unavailable "
+                "until GStreamer >= 1.28.9 is installed",
+                version,
             )
-            logger.error("Refusing to start media-core: %s", self._last_error)
-            return False
         self.binary_path = binary
         self._kill()
         self._last_started_at = now_ms()

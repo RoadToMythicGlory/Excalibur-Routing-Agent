@@ -18,33 +18,50 @@ namespace {
 
 // CVE-2026-119610 (GStreamer SA-2026-0095): rtph264depay in gst-plugins-good
 // < 1.28.9 has a remotely triggerable out-of-bounds heap read. RTSP inputs go
-// through rtspsrc ! decodebin3, which autoplugs rtph264depay, so refuse to run
-// on a vulnerable plugins-good build. The element lives in the "rtp" plugin.
+// through rtspsrc ! decodebin3, which autoplugs rtph264depay. On a vulnerable
+// build, remove that element from the registry so it can never be plugged:
+// H.264-over-RTP inputs stop working until GStreamer is upgraded, everything
+// else keeps running. The element lives in the "rtp" plugin.
 constexpr int kMinGoodMajor = 1;
 constexpr int kMinGoodMinor = 28;
 constexpr int kMinGoodMicro = 9;
+constexpr const char* kVulnerableElement = "rtph264depay";
 
-// Returns an empty string when OK, otherwise a human-readable reason.
-std::string check_plugins_good_version() {
-    GstPlugin* plugin = gst_registry_find_plugin(gst_registry_get(), "rtp");
+// Returns "" when nothing had to be done, otherwise a description of the
+// mitigation. Sets `failed` when the element could not be disabled.
+std::string mitigate_cve_2026_119610(bool& failed) {
+    failed = false;
+    GstRegistry* registry = gst_registry_get();
+    GstPlugin* plugin = gst_registry_find_plugin(registry, "rtp");
     if (plugin == nullptr) {
         return "";  // No RTP depayloaders at all: the vulnerable code is absent.
     }
     std::string version = gst_plugin_get_version(plugin) ? gst_plugin_get_version(plugin) : "";
     gst_object_unref(plugin);
     int major = 0, minor = 0, micro = 0;
-    if (std::sscanf(version.c_str(), "%d.%d.%d", &major, &minor, &micro) < 2) {
-        return "cannot parse gst-plugins-good version '" + version + "'";
+    const bool parsed = std::sscanf(version.c_str(), "%d.%d.%d", &major, &minor, &micro) >= 2;
+    const bool too_old = !parsed  // unknown version: assume vulnerable
+                 || (major != kMinGoodMajor ? major < kMinGoodMajor
+                   : minor != kMinGoodMinor ? minor < kMinGoodMinor
+                   : micro < kMinGoodMicro);
+    if (!too_old) {
+        return "";
     }
-    bool too_old = major != kMinGoodMajor ? major < kMinGoodMajor
-                 : minor != kMinGoodMinor ? minor < kMinGoodMinor
-                 : micro < kMinGoodMicro;
-    if (too_old) {
+    GstPluginFeature* feature = gst_registry_lookup_feature(registry, kVulnerableElement);
+    if (feature != nullptr) {
+        gst_registry_remove_feature(registry, feature);
+        gst_object_unref(feature);
+    }
+    GstElementFactory* still_there = gst_element_factory_find(kVulnerableElement);
+    if (still_there != nullptr) {
+        gst_object_unref(still_there);
+        failed = true;
         return "gst-plugins-good " + version +
-               " is vulnerable to CVE-2026-119610 (rtph264depay OOB read); "
-               "install GStreamer >= 1.28.9";
+               " is vulnerable to CVE-2026-119610 and rtph264depay could not be disabled";
     }
-    return "";
+    return "gst-plugins-good " + version +
+           " is vulnerable to CVE-2026-119610: rtph264depay disabled "
+           "(H.264 RTP/RTSP inputs unavailable until GStreamer >= 1.28.9)";
 }
 
 }  // namespace
@@ -52,15 +69,19 @@ std::string check_plugins_good_version() {
 int main(int argc, char* argv[]) {
     gst_init(&argc, &argv);
 
-    const std::string version_problem = check_plugins_good_version();
-    if (!version_problem.empty()) {
+    bool mitigation_failed = false;
+    const std::string mitigation = mitigate_cve_2026_119610(mitigation_failed);
+    if (!mitigation.empty()) {
+        std::fprintf(stderr, "media-core: %s\n", mitigation.c_str());
+        std::fflush(stderr);
+    }
+    if (mitigation_failed) {
         mediacore::ErrorReport err;
-        err.message = version_problem;
+        err.message = mitigation;
         err.element = "security";
         std::fputs(mediacore::serialize_error(err).c_str(), stdout);
         std::fputc('\n', stdout);
         std::fflush(stdout);
-        std::fprintf(stderr, "media-core: %s\n", version_problem.c_str());
         return 2;
     }
 

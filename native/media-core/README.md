@@ -19,9 +19,12 @@ See `../../.cursor/plans/` (the GStreamer Output plan) for the design rationale.
 
 ## Runtime requirements (Windows)
 
-> **Minimum GStreamer 1.28.9.** Older gst-plugins-good builds are vulnerable to
-> CVE-2026-119610 (out-of-bounds read in `rtph264depay`, reachable from RTSP
-> inputs). `media-core` refuses to start on them, and Excalibur will not spawn it.
+> **CVE-2026-119610.** gst-plugins-good before 1.28.9 has an out-of-bounds
+> read in `rtph264depay`, reachable from RTSP inputs. On such builds
+> `media-core` removes `rtph264depay` from the registry at startup, so H.264
+> RTP/RTSP inputs are unavailable until GStreamer >= 1.28.9 is installed.
+> (Windows binaries for 1.28.9 were not yet published when this was written;
+> 1.28.8 is the newest.)
 
 Install the **MSVC 64-bit** GStreamer package from
 <https://gstreamer.freedesktop.org/download/> (both are needed to build):

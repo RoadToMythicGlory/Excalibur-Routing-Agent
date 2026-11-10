@@ -147,7 +147,10 @@ def describe_environment() -> dict:
         "missing_required": missing,
         "plugins_good_version": ".".join(map(str, version)) if version else None,
         "vulnerable_cve_2026_119610": vulnerable,
-        "ready": runtime and not missing and not vulnerable,
+        # media-core removes rtph264depay from the registry on vulnerable
+        # builds, so the backend stays usable minus H.264 RTP/RTSP inputs.
+        "rtp_h264_input_disabled": vulnerable,
+        "ready": runtime and not missing,
     }
 
 
