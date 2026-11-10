@@ -58,7 +58,15 @@ OPTIONAL_ELEMENTS: dict[str, str] = {
     "avdec_h264": "software H.264 decode fallback (gst-libav)",
 }
 
+# CVE-2026-119610 (GStreamer SA-2026-0095): rtph264depay in gst-plugins-good
+# before 1.28.9 has a remotely triggerable out-of-bounds heap read. RTSP inputs
+# are decoded via rtspsrc ! decodebin3, which autoplugs rtph264depay.
+MIN_PLUGINS_GOOD_VERSION: tuple[int, int, int] = (1, 28, 9)
+# The plugin (from gst-plugins-good) that ships rtph264depay.
+RTP_PLUGIN = "rtp"
+
 _cache: dict[str, bool] = {}
+_version_cache: dict[str, tuple[int, ...] | None] = {}
 
 
 def gst_inspect_path() -> str | None:
@@ -129,16 +137,74 @@ def describe_environment() -> dict:
         name: False for name in OPTIONAL_ELEMENTS
     }
     missing = [name for name, ok in required.items() if not ok]
+    version = plugins_good_version() if runtime else None
+    vulnerable = vulnerable_to_cve_2026_119610() if runtime else False
     return {
         "gst_inspect": gst_inspect_path(),
         "runtime_available": runtime,
         "required": required,
         "optional": optional,
         "missing_required": missing,
+        "plugins_good_version": ".".join(map(str, version)) if version else None,
+        "vulnerable_cve_2026_119610": vulnerable,
+        # media-core removes rtph264depay from the registry on vulnerable
+        # builds, so the backend stays usable minus H.264 RTP/RTSP inputs.
+        "rtp_h264_input_disabled": vulnerable,
         "ready": runtime and not missing,
     }
+
+
+def parse_plugin_version(inspect_output: str) -> tuple[int, ...] | None:
+    """Extract ``(major, minor, micro)`` from ``gst-inspect-1.0 <plugin>`` output.
+
+    The plugin details block contains a line like ``  Version  1.28.6``.
+    """
+    for line in inspect_output.splitlines():
+        parts = line.split()
+        if len(parts) >= 2 and parts[0] == "Version":
+            numbers = parts[1].split(".")
+            try:
+                return tuple(int(n) for n in numbers[:3])
+            except ValueError:
+                return None
+    return None
+
+
+def plugins_good_version() -> tuple[int, ...] | None:
+    """Version of the gst-plugins-good ``rtp`` plugin, or ``None`` if absent."""
+    if RTP_PLUGIN in _version_cache:
+        return _version_cache[RTP_PLUGIN]
+    inspect = gst_inspect_path()
+    version: tuple[int, ...] | None = None
+    if inspect is not None:
+        try:
+            result = subprocess.run(
+                [inspect, RTP_PLUGIN],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            if result.returncode == 0:
+                version = parse_plugin_version(result.stdout)
+        except (OSError, subprocess.SubprocessError) as error:  # pragma: no cover - env dependent
+            logger.debug("gst-inspect version probe failed: %s", error)
+    _version_cache[RTP_PLUGIN] = version
+    return version
+
+
+def vulnerable_to_cve_2026_119610() -> bool:
+    """True when the installed rtp plugin is older than 1.28.9.
+
+    An absent plugin is not vulnerable (the depayloader code is not there).
+    """
+    version = plugins_good_version()
+    if version is None:
+        return False
+    padded = tuple(version) + (0,) * (3 - len(version))
+    return padded < MIN_PLUGINS_GOOD_VERSION
 
 
 def reset_cache() -> None:
     """Clear the memoized probe results (used by tests)."""
     _cache.clear()
+    _version_cache.clear()

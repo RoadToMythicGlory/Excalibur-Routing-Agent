@@ -30,7 +30,11 @@ from pathlib import Path
 
 from excalibur.matrix.clock import now_ms
 from excalibur.matrix.media import media_core_protocol as proto
-from excalibur.matrix.media.gst_probe import describe_environment
+from excalibur.matrix.media.gst_probe import (
+    describe_environment,
+    plugins_good_version,
+    vulnerable_to_cve_2026_119610,
+)
 from excalibur.matrix.media.ingest import MediaInput
 
 logger = logging.getLogger(__name__)
@@ -237,6 +241,14 @@ class GstProgramOutputManager:
                 MEDIA_CORE_ENV,
             )
             return False
+        if vulnerable_to_cve_2026_119610():
+            version = ".".join(map(str, plugins_good_version() or ()))
+            logger.warning(
+                "gst-plugins-good %s is vulnerable to CVE-2026-119610; media-core "
+                "disables rtph264depay, so H.264 RTP/RTSP inputs are unavailable "
+                "until GStreamer >= 1.28.9 is installed",
+                version,
+            )
         self.binary_path = binary
         self._kill()
         self._last_started_at = now_ms()

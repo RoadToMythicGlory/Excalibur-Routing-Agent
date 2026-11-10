@@ -1,0 +1,121 @@
+name: media-core (Windows)
+
+on:
+  pull_request:
+    paths:
+      - "native/media-core/**"
+      - ".github/workflows/media-core-windows.yml"
+  push:
+    branches: [main]
+    paths:
+      - "native/media-core/**"
+      - ".github/workflows/media-core-windows.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: media-core-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 120
+    env:
+      # Newest official Windows build. 1.28.9 (CVE-2026-119610 fix) has no
+      # Windows binaries yet; bump both values when it does.
+      GST_VERSION: "1.28.8"
+      GST_SHA256: "e4c41ee6ee9c6c32a45d198463ec08d79bac3bd5fa58adc93d13fe4a08abc9d9"
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Cache GStreamer installer
+        uses: actions/cache@v4
+        with:
+          path: gst-installer
+          key: gstreamer-msvc-x86_64-exe-${{ env.GST_VERSION }}
+
+      - name: Download GStreamer MSVC installer
+        run: |
+          set -euo pipefail
+          # Since 1.28 Windows ships one Inno Setup .exe (runtime + devel).
+          mkdir -p gst-installer
+          name="gstreamer-1.0-msvc-x86_64-${GST_VERSION}.exe"
+          base="https://gstreamer.freedesktop.org/data/pkg/windows/${GST_VERSION}/msvc"
+          if [[ -s "gst-installer/$name.ok" ]]; then echo "cached: $name"; exit 0; fi
+          code="$(curl -s -o /dev/null -w '%{http_code}' --location --http1.1 --retry 5 \
+                  --retry-delay 10 -I "$base/$name" || true)"
+          if [[ "$code" == "404" ]]; then
+            echo "ERROR: $base/$name does not exist (404)." >&2; exit 1
+          fi
+          attempt=0
+          # Upstream drops long transfers and returns 503s; resume until done.
+          until curl --fail --location --http1.1 --retry 3 --retry-all-errors \
+              --retry-delay 10 --continue-at - --output "gst-installer/$name" "$base/$name"; do
+            attempt=$((attempt + 1))
+            (( attempt < 25 )) || { echo "ERROR: could not download $name" >&2; exit 1; }
+            echo "Interrupted ($attempt); resuming in 15s…"; sleep 15
+          done
+          echo "$GST_SHA256  gst-installer/$name" | sha256sum -c -
+          echo ok > "gst-installer/$name.ok"
+
+      - name: Install GStreamer
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem gst-installer\*.exe | Select-Object -First 1
+          $p = Start-Process $exe.FullName -Wait -PassThru -ArgumentList `
+            '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/ALLUSERS','/TYPE=full','/DIR=C:\gstreamer'
+          if ($p.ExitCode -ne 0) { throw "installer failed: $($p.ExitCode)" }
+          $pc = Get-ChildItem C:\gstreamer -Recurse -Filter gstreamer-1.0.pc | Select-Object -First 1
+          if (-not $pc) {
+            Get-ChildItem C:\gstreamer -Depth 3 | Select-Object FullName
+            throw "devel files (gstreamer-1.0.pc) not installed"
+          }
+          $root = $pc.Directory.Parent.Parent.FullName
+          Write-Host "GStreamer root: $root"
+          "GSTREAMER_1_0_ROOT_MSVC_X86_64=$root\" >> $env:GITHUB_ENV
+          "PKG_CONFIG_PATH=$($pc.DirectoryName)" >> $env:GITHUB_ENV
+          "GST_ROOT=$root" >> $env:GITHUB_ENV
+          "$root\bin" >> $env:GITHUB_PATH
+
+      - name: Check installed plugins-good version
+        run: gst-inspect-1.0 rtp | grep -E "^\s*Version"
+
+      - name: Configure
+        working-directory: native/media-core
+        run: cmake -S . -B build -DPKG_CONFIG_EXECUTABLE="$GST_ROOT/bin/pkg-config.exe"
+
+      - name: Build
+        working-directory: native/media-core
+        run: cmake --build build --config Release
+
+      - name: Require the full media-core binary
+        working-directory: native/media-core
+        run: |
+          # CMake silently skips media-core when GStreamer isn't found.
+          test -f build/Release/media-core.exe || { echo "media-core.exe was not built" >&2; exit 1; }
+
+      - name: Unit tests
+        working-directory: native/media-core
+        run: ctest --test-dir build -C Release --output-on-failure
+
+      - name: Startup CVE-2026-119610 handling
+        working-directory: native/media-core
+        shell: pwsh
+        run: |
+          # < 1.28.9: media-core must disable rtph264depay and keep running.
+          # >= 1.28.9: it must start with no mitigation message.
+          New-Item -ItemType File empty.in -Force | Out-Null
+          $p = Start-Process build\Release\media-core.exe -PassThru -NoNewWindow `
+                 -RedirectStandardInput empty.in `
+                 -RedirectStandardOutput gate.out -RedirectStandardError gate.err
+          if (-not $p.WaitForExit(15000)) { Stop-Process -Id $p.Id -Force }
+          Get-Content gate.out, gate.err
+          if ($p.ExitCode -eq 2) { throw "media-core failed its security check" }
+          $mitigated = Select-String -Path gate.err -Pattern 'rtph264depay disabled' -Quiet
+          $vulnerable = [version]$env:GST_VERSION -lt [version]'1.28.9'
+          if ($vulnerable -and -not $mitigated) { throw "rtph264depay was not disabled on $env:GST_VERSION" }
+          if (-not $vulnerable -and $mitigated) { throw "mitigation applied on fixed $env:GST_VERSION" }
+          Write-Host "CVE-2026-119610 handling OK (mitigated=$mitigated)."
